@@ -1,4 +1,5 @@
 import { ensureCornerstone } from '../cornerstone'
+import { clearInstanceIndex, imageIdForSopInstanceUid, registerInstance } from '../dicom-instances'
 import { t } from '../i18n'
 import { unzipDicom } from '../dicom-zip'
 import type { SkippedEntry, ZipEntry } from '../dicom-zip'
@@ -72,6 +73,7 @@ export interface AddZipResult {
 
 interface DicomHeader {
   instanceNumber: number | null
+  sopInstanceUid: string | null
   seriesInstanceUid: string | null
   seriesNumber: number | null
   seriesDescription: string | null
@@ -87,6 +89,7 @@ interface IndexedImage {
 }
 
 const TAG = {
+  sopInstanceUid: 'x00080018',
   modality: 'x00080060',
   seriesDescription: 'x0008103e',
   seriesInstanceUid: 'x0020000e',
@@ -138,6 +141,7 @@ export function useDicomFiles() {
           indexed[i]!.header = await readFileHeader(file)
         }),
       )
+      indexInstances(indexed)
     }
 
     sortImages(indexed, sort)
@@ -179,6 +183,7 @@ export function useDicomFiles() {
     // is on, regardless of the sort mode.
     if (groupBy === 'series' || sort === 'instanceNumber') {
       await indexHeaders(entries, indexed, onProgress)
+      indexInstances(indexed)
     }
 
     const groups = groupBy === 'series'
@@ -212,9 +217,25 @@ export function useDicomFiles() {
   async function purge(): Promise<void> {
     const { dicomImageLoader } = await ensureCornerstone()
     dicomImageLoader.wadouri.fileManager.purge()
+    clearInstanceIndex()
   }
 
-  return { addFiles, addZip, toImageId, purge }
+  return { addFiles, addZip, toImageId, purge, imageIdForSopInstanceUid }
+}
+
+/**
+ * Record where each slice ended up, so that annotations arriving from
+ * elsewhere can find it by SOPInstanceUID.
+ *
+ * Only files whose header was read get an entry, which is every file on the
+ * default settings. `sort: false` and `sort: 'name'` skip header reading
+ * altogether, and a file that is not indexed cannot be found by UID.
+ */
+function indexInstances(images: IndexedImage[]): void {
+  for (const image of images) {
+    const uid = image.header?.sopInstanceUid
+    if (uid) registerInstance(uid, image.imageId)
+  }
 }
 
 function toFile(entry: ZipEntry): File {
@@ -371,6 +392,7 @@ function parseHeader(dicomParser: DicomParser, bytes: Uint8Array): DicomHeader |
     const dataSet = dicomParser.parseDicom(bytes, { untilTag: UNTIL_TAG })
     return {
       instanceNumber: intOrNull(dataSet.intString(TAG.instanceNumber)),
+      sopInstanceUid: textOrNull(dataSet.string(TAG.sopInstanceUid)),
       seriesInstanceUid: textOrNull(dataSet.string(TAG.seriesInstanceUid)),
       seriesNumber: intOrNull(dataSet.intString(TAG.seriesNumber)),
       seriesDescription: textOrNull(dataSet.string(TAG.seriesDescription)),

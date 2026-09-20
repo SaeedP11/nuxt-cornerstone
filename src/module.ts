@@ -41,6 +41,13 @@ export type {
   ZipProgress,
 } from './runtime/composables/useDicomFiles'
 
+export type {
+  AddBoxesOptions,
+  AddBoxesResult,
+  DicomBox,
+  PixelBox,
+} from './runtime/composables/useDicomAnnotations'
+
 
 const MODULE_NAME = 'nuxt-cornerstone3d'
 

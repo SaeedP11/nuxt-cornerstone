@@ -3,6 +3,9 @@ defineProps<{
   ready: boolean
   busy: boolean
   hasImages: boolean
+  findingsBusy: boolean
+  findingsLoaded: boolean
+  findingsVisible: boolean
 }>()
 
 const emit = defineEmits<{
@@ -10,6 +13,7 @@ const emit = defineEmits<{
   open: [files: File[]]
   clear: []
   showHelp: []
+  toggleFindings: []
 }>()
 
 const { t, locale, availableLocales } = useCornerstoneI18n()
@@ -93,6 +97,24 @@ function onPick(event: { files: File | File[] }) {
       choose-icon="pi pi-folder-open"
       :choose-button-props="{ severity: 'secondary', size: 'small', loading: busy }"
       @uploader="onPick"
+    />
+
+    <!--
+      Annotations that came from somewhere else. The first press fetches the
+      report; after that the button only shows and hides what it drew, because
+      re-fetching a read-only report on every press would be a request nobody
+      asked for.
+    -->
+    <Button
+      v-if="hasImages"
+      :label="findingsLoaded
+        ? (findingsVisible ? t('app.findings.hide') : t('app.findings.show'))
+        : t('app.findings.load')"
+      icon="pi pi-flag"
+      :severity="findingsLoaded && findingsVisible ? 'warn' : 'secondary'"
+      size="small"
+      :loading="findingsBusy"
+      @click="emit('toggleFindings')"
     />
 
     <Button

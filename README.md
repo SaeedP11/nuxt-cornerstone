@@ -118,12 +118,14 @@ All are auto-imported.
 initialisation; `ensure()` resolves with `{ core, tools, dicomImageLoader }`. Initialisation is
 shared, so calling this from ten components still initialises once.
 
-**`useDicomFiles()`** → `{ addFiles, addZip, toImageId, purge }`. `addFiles(files)` registers local
+**`useDicomFiles()`** → `{ addFiles, addZip, toImageId, purge, imageIdForSopInstanceUid }`. `addFiles(files)` registers local
 `File`s and returns `dicomfile:` imageIds sorted by **InstanceNumber** — read from tag (0020,0013)
 with `dicom-parser`, stopping at that tag, and falling back to a numeric-aware filename sort for
 files that do not carry it. Pass `{ sort: 'name' }` or `{ sort: false }` to change that.
 `toImageId(url)` builds a `wadouri:` id for a Part 10 file served over HTTP. `addZip(file)` unpacks
-a ZIP archive — see below.
+a ZIP archive — see below. `imageIdForSopInstanceUid(uid)` answers where a slice ended up, which is
+how annotations from elsewhere find their image — see
+[Imported annotations](#imported-annotations).
 
 **`useCornerstoneI18n()`** → `{ locale, setLocale, availableLocales, dir, isRtl, t, n, formatBytes,
 addMessages, setTranslator }`. Locale and translation for the strings this module produces — see
@@ -204,6 +206,71 @@ binding to *passive* rather than disabled, so annotations it drew stay visible a
 counted; the last viewport to leave destroys the engine. `core.init()` allocates a pool of WebGL
 contexts (7 by default) and each engine takes one, so four viewports should share one engine rather
 than create four.
+
+**`useDicomAnnotations(viewport)`** → `{ addBoxes, clear, setVisible, drawn, pending, visible }`.
+Draws boxes that were produced somewhere else — see below.
+
+### Imported annotations
+
+Boxes from a reporting service or a detection model are drawn onto the stack with
+`useDicomAnnotations()`. It takes the viewport — a ref, a getter, or the object itself — and boxes
+in **image pixel coordinates**, each naming the slice it belongs to by **SOPInstanceUID**:
+
+```vue
+<script setup lang="ts">
+import type { Types as CoreTypes } from '@cornerstonejs/core'
+
+const viewport = shallowRef<CoreTypes.IStackViewport | null>(null)
+const { addZip } = useDicomFiles()
+const { addBoxes, setVisible, visible } = useDicomAnnotations(viewport)
+
+async function open(archive: Blob, report: Finding[]) {
+  await addZip(archive)
+
+  const { drawn, deferred, unresolved } = await addBoxes(
+    report.map(finding => ({
+      sopInstanceUid: finding.sopInstanceUid,
+      box: { x1: finding.left, y1: finding.top, x2: finding.right, y2: finding.bottom },
+      label: `${finding.name} ${Math.round(finding.confidence * 100)}%`,
+      uid: finding.id,
+    })),
+    { color: 'rgb(251, 191, 36)' },
+  )
+
+  if (unresolved.length) console.warn(`${unresolved.length} boxes name slices that are not loaded`)
+}
+</script>
+```
+
+**SOPInstanceUID (0008,0018) is how a box finds its slice**, because it is the only identifier that
+survives leaving the viewer: `dicomfile:` imageIds are handed out by the loader as files are
+registered, so the same study opened twice has a different set of them. `addFiles()` and `addZip()`
+record the UID of every file whose header they read, which is every file on the default settings —
+`sort: false` and `sort: 'name'` skip header reading, and a file that was not indexed cannot be
+found by UID. Boxes naming a slice that is not loaded come back in `unresolved` instead of throwing,
+because a study and a report disagreeing about which slices exist is a normal thing to show the
+user rather than an error.
+
+**Boxes are placed lazily.** Pixel coordinates become world coordinates through the slice's own
+image plane, and the metadata provider only holds that once the slice has been loaded. A box whose
+slice is already loaded is drawn immediately and counted in `drawn`; the rest are held and counted
+in `deferred`, then drawn the first time their slice is shown. Loading 500 slices up front to place
+boxes the user may never scroll to would cost more than it saves.
+
+**They are read-only.** Boxes are locked, so they cannot be dragged, resized or deleted, and they
+are drawn with a RectangleROI instance of their own — registered as `DicomBoxOverlay` — rather than
+with RectangleROI itself. That keeps the user's own measurements separately styled and separately
+selectable, and lets an imported box show the label it arrived with instead of the area and mean a
+measurement shows. Pass `{ locked: false }` if they should be editable.
+
+`setVisible(false)` hides the boxes without discarding them; `clear()` removes every box this
+composable drew and leaves the user's own measurements alone. Boxes are keyed to the imageIds that
+were loaded when they were added, so clear them when the stack changes.
+
+| Option | Default | |
+| --- | --- | --- |
+| `color` | Cornerstone's locked colour | any CSS colour; applies to imported boxes only |
+| `locked` | `true` | `false` makes them editable |
 
 ## Options
 
@@ -474,7 +541,9 @@ register tools by their `toolName` string.
 ## Scope
 
 This release covers 2D stack viewing: initialisation, `<CornerstoneViewport>`, tool groups,
-annotations, and the `wadouri:` / `dicomfile:` loading paths. Volume and MPR viewports, segmentation,
+annotations — drawn by the user, or imported as read-only boxes — and the `wadouri:` /
+`dicomfile:` loading paths. Imported annotations are boxes only, and are read-only: nothing writes
+measurements back out, and DICOM SR and Presentation State are not read. Volume and MPR viewports, segmentation,
 `@cornerstonejs/polymorphic-segmentation` and `@cornerstonejs/labelmap-interpolation` are not wired
 up yet — the last two each need their own `optimizeDeps.exclude` entry and a `peerImport` callback.
 
@@ -496,6 +565,14 @@ and renders counts in Persian-Indic digits, while the viewport stays left-to-rig
 strings live in `playground/i18n/messages.ts` and are registered through
 `cornerstone.i18n.messages`, which is the point of it: the catalogue takes arbitrary keys, so an app
 can translate its chrome from one source without a second i18n library.
+
+**Load AI findings** fetches `/api/findings`, a Nitro route standing in for a reporting service. It
+returns one nodule detector's output verbatim, and `playground/app/composables/useStudyFindings.ts`
+translates it into the boxes `useDicomAnnotations()` takes — which is the split the module is built
+around: it knows about boxes and SOPInstanceUIDs, and the application knows about its own vendor's
+JSON. The report was produced from one particular series, so with any other study open it reports
+that none of its boxes belong to the images on screen rather than drawing nothing and looking
+broken.
 
 The samples are the MIT-licensed test images from the Cornerstone3D repository: one CT slice in eight
 transfer syntaxes. Loading them as a single stack exercises every decoder — pako, RLE,

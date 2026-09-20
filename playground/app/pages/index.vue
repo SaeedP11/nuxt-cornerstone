@@ -24,6 +24,11 @@ const activeTool = ref('WindowLevelTool')
 const viewport = shallowRef<CoreTypes.IStackViewport | null>(null)
 const helpVisible = ref(false)
 
+// Annotations from the demo API. They are placed by SOPInstanceUID, so a new
+// stack invalidates every one of them.
+const findings = useStudyFindings(viewport)
+watch(imageIds, () => findings.reset())
+
 async function selectTool(className: string) {
   activeTool.value = className
   await tools.setActive(className)
@@ -59,10 +64,14 @@ onMounted(() => {
       :ready="ready"
       :busy="busy"
       :has-images="imageIds.length > 0"
+      :findings-busy="findings.busy.value"
+      :findings-loaded="findings.loaded.value"
+      :findings-visible="findings.visible.value"
       @load-samples="study.loadSamples"
       @open="study.openAny"
       @clear="study.clear"
       @show-help="helpVisible = true"
+      @toggle-findings="findings.toggle"
     />
 
     <ViewerProgress
@@ -88,6 +97,16 @@ onMounted(() => {
       class="m-0 rounded-none"
     >
       {{ rejectedText }}
+    </Message>
+
+    <!-- How the imported report landed on the stack that is open. -->
+    <Message
+      v-if="findings.summaryText.value"
+      severity="info"
+      :closable="false"
+      class="m-0 rounded-none"
+    >
+      {{ findings.summaryText.value }}
     </Message>
 
     <div class="flex min-h-0 flex-1">

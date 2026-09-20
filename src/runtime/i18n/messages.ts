@@ -44,6 +44,14 @@ export const en = {
     + 'Add its class name to `cornerstone.tools.register` in nuxt.config.',
   'warn.unknownTool':
     '"{tool}" is not an exported tool class of @cornerstonejs/tools; skipping.',
+  'error.annotationViewport':
+    'there is no viewport to place annotations on. '
+    + 'Wait for the viewport\'s `ready` event before calling addBoxes().',
+  'error.annotationToolGroup':
+    'that viewport is not in a tool group, so annotations would never be drawn. '
+    + 'Mount it through <CornerstoneViewport>, or add it with useCornerstoneTools().addViewport().',
+  'error.annotationTool':
+    'RectangleROITool is not available from @cornerstonejs/tools, and imported boxes are drawn with it.',
   'zip.tooLarge':
     'Archive expands to more than {limit} of DICOM data. '
     + 'Extract it and open the series you need, or raise `maxBytes`.',
@@ -79,6 +87,14 @@ export const fa: Record<CornerstoneMessageKey, MessageValue> = {
     + 'نام کلاس آن را به `cornerstone.tools.register` در nuxt.config اضافه کنید.',
   'warn.unknownTool':
     '«{tool}» از کلاس‌های ابزار صادرشدهٔ @cornerstonejs/tools نیست؛ نادیده گرفته شد.',
+  'error.annotationViewport':
+    'نمایی برای قرار دادن حاشیه‌نویسی‌ها وجود ندارد. '
+    + 'پیش از فراخوانی addBoxes() منتظر رویداد `ready` نما بمانید.',
+  'error.annotationToolGroup':
+    'این نما در هیچ گروه ابزاری نیست، بنابراین حاشیه‌نویسی‌ها هرگز رسم نمی‌شوند. '
+    + 'آن را با <CornerstoneViewport> سوار کنید، یا با useCornerstoneTools().addViewport() اضافه کنید.',
+  'error.annotationTool':
+    'ابزار RectangleROITool از @cornerstonejs/tools در دسترس نیست، و کادرهای واردشده با همین ابزار رسم می‌شوند.',
   'zip.tooLarge':
     'حجم بازشدهٔ این بایگانی بیش از {limit} دادهٔ دایکام است. '
     + 'آن را استخراج کنید و تنها سری موردنیاز را باز کنید، یا مقدار `maxBytes` را افزایش دهید.',
