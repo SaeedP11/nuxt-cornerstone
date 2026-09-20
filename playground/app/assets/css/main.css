@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+/*
+ * Anchor source detection on the app directory.
+ *
+ * Tailwind v4 finds sources by walking up from this file collecting .gitignore
+ * files until it reaches a git root. Without a repository here that walk runs
+ * all the way to the home directory, and a `*` rule in any .gitignore along the
+ * way silently ignores every file — you get preflight and no utilities at all.
+ */
+@source "../../";
+
+/*
+ * Follow PrimeVue's darkModeSelector rather than the OS setting, so both
+ * systems switch on the same signal.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * The viewport component styles itself with Tailwind utilities, and it lives
+ * outside the source tree anchored above, so name it explicitly. A consuming
+ * app does the same against the published package — see "Tailwind" in the
+ * README.
+ */
+@source "../../../../src/runtime";

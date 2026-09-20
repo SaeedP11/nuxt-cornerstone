@@ -1,0 +1,75 @@
+{
+  "name": "nuxt-cornerstone3d",
+  "version": "0.1.0",
+  "description": "Cornerstone3D medical imaging for Nuxt 4 — DICOM stack viewport, tools and loaders, with the Vite/worker/WASM wiring done for you.",
+  "license": "MIT",
+  "type": "module",
+  "keywords": [
+    "nuxt",
+    "nuxt-module",
+    "cornerstone",
+    "cornerstone3d",
+    "dicom",
+    "medical-imaging"
+  ],
+  "main": "./dist/module.mjs",
+  "types": "./dist/types.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/types.d.mts",
+      "import": "./dist/module.mjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "prepack": "nuxt-module-build build",
+    "dev": "nuxi dev playground",
+    "dev:build": "nuxi build playground",
+    "dev:prepare": "nuxt-module-build build --stub && nuxt-module-build prepare && nuxi prepare playground",
+    "samples": "node scripts/fetch-samples.mjs",
+    "lint": "eslint .",
+    "typecheck": "nuxi typecheck playground"
+  },
+  "dependencies": {
+    "@nuxt/kit": "^4.5.2",
+    "@originjs/vite-plugin-commonjs": "^1.0.3",
+    "defu": "^6.1.4"
+  },
+  "peerDependencies": {
+    "@cornerstonejs/core": "^5.10.7",
+    "@cornerstonejs/dicom-image-loader": "^5.10.7",
+    "@cornerstonejs/metadata": "^5.10.7",
+    "@cornerstonejs/tools": "^5.10.7",
+    "@cornerstonejs/utils": "^5.10.7",
+    "dicom-parser": "^1.8.21"
+  },
+  "devDependencies": {
+    "@cornerstonejs/core": "5.10.7",
+    "@cornerstonejs/dicom-image-loader": "5.10.7",
+    "@cornerstonejs/metadata": "5.10.7",
+    "@cornerstonejs/tools": "5.10.7",
+    "@cornerstonejs/utils": "5.10.7",
+    "@nuxt/eslint-config": "^1.9.0",
+    "@nuxt/module-builder": "^1.0.3",
+    "@nuxt/schema": "^4.5.2",
+    "@primeuix/themes": "^2.0.3",
+    "@primevue/nuxt-module": "^4.5.5",
+    "@tailwindcss/vite": "^4.3.3",
+    "dicom-parser": "1.8.21",
+    "eslint": "^9.35.0",
+    "nuxt": "^4.5.2",
+    "primeicons": "^7.0.0",
+    "primevue": "^4.5.5",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vue-tsc": "^3.2.5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "unrs-resolver"
+    ]
+  }
+}

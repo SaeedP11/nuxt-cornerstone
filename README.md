@@ -1,0 +1,275 @@
+# nuxt-cornerstone3d
+
+[Cornerstone3D](https://www.cornerstonejs.org/) for Nuxt 4 — a DICOM stack viewport, tool groups
+and loaders, with the build configuration Cornerstone needs already done.
+
+Cornerstone3D cannot simply be imported into a Nuxt app. It needs Vite configured a particular way
+(module workers, dependency prebundling held back from the WASM codecs, CommonJS interop), and it is
+strictly browser-only, so SSR must never touch it. A plugin file cannot change Vite's configuration
+for the app that installs it — a module can, which is what this is.
+
+Built and verified against **Cornerstone3D 5.10.7**, **Nuxt 4.5.2**, **Vite 8.3.0**.
+
+## Install
+
+The `@cornerstonejs/*` packages are peer dependencies, so your app owns exactly one copy of each.
+Two copies of `@cornerstonejs/core` in a dependency tree means two image caches and two event
+targets, and it fails in ways that are hard to trace.
+
+```bash
+pnpm add nuxt-cornerstone3d
+pnpm add @cornerstonejs/core @cornerstonejs/tools @cornerstonejs/dicom-image-loader \
+         @cornerstonejs/metadata @cornerstonejs/utils dicom-parser
+```
+
+`@cornerstonejs/metadata` and `@cornerstonejs/utils` were split out of `core` in Cornerstone3D 5 and
+are exact-pinned peers of it. Nothing in your code imports them directly, but the install is broken
+without them. All `@cornerstonejs` packages must be on the same version.
+
+The module checks for all six at startup and fails with the install command if any is missing.
+
+### Tailwind
+
+`<CornerstoneViewport>` styles itself with Tailwind utilities, so your app needs Tailwind v4 and
+has to scan this package — Tailwind skips `node_modules` unless a source is named explicitly:
+
+```css
+/* assets/css/main.css */
+@import "tailwindcss";
+@source "../../node_modules/nuxt-cornerstone3d/dist";
+```
+
+Without that line the viewport element is laid out at its intrinsic size, which is zero height, and
+nothing renders. If you would rather not add Tailwind, give `.nuxt-cornerstone-viewport` the
+equivalent rules yourself: `position: relative`, `width: 100%`, `height: 100%`,
+`overflow: hidden`, `touch-action: none`, and `display: block` on its child `canvas`.
+
+```ts
+// nuxt.config.ts
+export default defineNuxtConfig({
+  modules: ['nuxt-cornerstone3d'],
+})
+```
+
+## Usage
+
+```vue
+<script setup lang="ts">
+const { addFiles } = useDicomFiles()
+const tools = useCornerstoneTools()
+
+const imageIds = ref<string[]>([])
+const imageIndex = ref(0)
+
+async function open(files: FileList | null) {
+  if (files) imageIds.value = await addFiles(files)
+}
+</script>
+
+<template>
+  <input type="file" multiple @change="open(($event.target as HTMLInputElement).files)">
+  <button @click="tools.setActive('LengthTool')">Measure</button>
+
+  <div style="height: 600px">
+    <CornerstoneViewport
+      :image-ids="imageIds"
+      :image-index="imageIndex"
+      @image-index-change="imageIndex = $event"
+    />
+  </div>
+</template>
+```
+
+Out of the box: left-drag windows/levels, right-drag zooms, middle-drag pans, the wheel scrolls the
+stack.
+
+## `<CornerstoneViewport>`
+
+A stack viewport. Registered as a client-only component, so you never need `<ClientOnly>` around it.
+
+| Prop | Type | Default | |
+| --- | --- | --- | --- |
+| `imageIds` | `string[]` | required | `wadouri:` / `wadors:` / `dicomfile:` ids, in display order |
+| `imageIndex` | `number` | `0` | index into `imageIds` |
+| `viewportId` | `string` | generated | |
+| `renderingEngineId` | `string` | module option | viewports sharing an id share one engine |
+| `toolGroupId` | `string` | module option | |
+| `background` | `[number, number, number]` | `[0, 0, 0]` | canvas background, RGB in 0..1 |
+| `defaultTool` | `string \| false` | `'WindowLevelTool'` | bound to left-drag on mount |
+
+Events: `ready(viewport)`, `imageRendered`, `imageIndexChange(index)`, `error(error)`.
+
+Exposed: `viewport`, `viewportId`, `renderingEngineId`, `status`, `error`, `setImageIndex(index)`,
+`resetCamera()`, `getRenderingEngine()`.
+
+The default slot receives `{ status, error, viewport }` for overlays.
+
+The element must have a size — give it a height. It waits for a non-zero box before enabling the
+viewport, because Cornerstone sizes its canvas from the element and a zero-sized element produces a
+camera that never recovers. A viewport that starts inside a collapsed panel therefore comes up when
+the panel opens, not before. Resizes are followed with a `ResizeObserver`, keeping the user's
+pan/zoom.
+
+## Composables
+
+All are auto-imported.
+
+**`useCornerstone()`** → `{ libs, ready, error, pending, ensure, options }`. Calling it starts
+initialisation; `ensure()` resolves with `{ core, tools, dicomImageLoader }`. Initialisation is
+shared, so calling this from ten components still initialises once.
+
+**`useDicomFiles()`** → `{ addFiles, toImageId, purge }`. `addFiles(files)` registers local `File`s
+and returns `dicomfile:` imageIds sorted by **InstanceNumber** — read from tag (0020,0013) with
+`dicom-parser`, stopping at that tag, and falling back to a numeric-aware filename sort for files
+that do not carry it. Pass `{ sort: 'name' }` or `{ sort: false }` to change that.
+`toImageId(url)` builds a `wadouri:` id for a Part 10 file served over HTTP.
+
+**`useCornerstoneTools(toolGroupId?)`** → `{ ensureGroup, addViewport, removeViewport, setActive,
+setPassive, setEnabled, setDisabled, getActiveTool, destroy }`. Takes either a class name
+(`'LengthTool'`) or a tool name (`'Length'`). `setActive` sets the tool that held the left-drag
+binding to *passive* rather than disabled, so annotations it drew stay visible and selectable.
+
+**`useRenderingEngine()`** → `{ acquire, release, get }`. Engines are shared per id and reference
+counted; the last viewport to leave destroys the engine. `core.init()` allocates a pool of WebGL
+contexts (7 by default) and each engine takes one, so four viewports should share one engine rather
+than create four.
+
+## Options
+
+```ts
+export default defineNuxtConfig({
+  modules: ['nuxt-cornerstone3d'],
+  cornerstone: {
+    autoInit: true,
+    core: {},                        // -> coreInit(config)
+    dicomImageLoader: {},            // -> dicomImageLoaderInit(options)
+    tools: { enabled: true, register: [/* class names */] },
+    viteCommonjs: true,
+    prefix: 'Cornerstone',
+    renderingEngineId: 'nuxt-cornerstone',
+    toolGroupId: 'nuxt-cornerstone-tools',
+  },
+})
+```
+
+Registered tools by default: `WindowLevelTool`, `PanTool`, `ZoomTool`, `StackScrollTool`,
+`LengthTool`, `RectangleROITool`, `EllipticalROITool`, `ProbeTool`. Add any other export of
+`@cornerstonejs/tools` to `tools.register`.
+
+### Callbacks
+
+Options reach the browser through `runtimeConfig`, which is serialized into the page payload, so
+functions cannot travel that way — `dicomImageLoader.beforeSend`, `core.peerImport` and friends. The
+module warns at build time and drops them. Pass them at runtime instead:
+
+```ts
+// nuxt.config.ts → cornerstone: { autoInit: false }
+
+// app/plugins/cornerstone.client.ts
+export default defineNuxtPlugin(() => {
+  ensureCornerstone({
+    dicomImageLoader: {
+      beforeSend: xhr => ({ Authorization: `Bearer ${useAuth().token}` }),
+    },
+  })
+})
+```
+
+## What the module does to Vite
+
+On the client build only:
+
+- **`optimizeDeps.exclude: ['@cornerstonejs/dicom-image-loader']`.** Each decoder locates its binary
+  with a bare `@cornerstonejs/codec-*` specifier inside `new URL(..., import.meta.url)`. Rollup
+  resolves that and emits the binary; esbuild does not, and dev prebundling is esbuild. Left in, the
+  request goes to a path that does not exist, the SPA fallback answers with `index.html`, and you
+  get `CompileError: WebAssembly.instantiate(): expected magic word 00 61 73 6d, found 3c 21 64 6f`
+  — `3c 21 64 6f` is `<!do`.
+- **`optimizeDeps.include`** for `dicom-parser` (CommonJS), `@cornerstonejs/core`,
+  `@cornerstonejs/tools`, `@cornerstonejs/metadata` and `@cornerstonejs/utils`. Two reasons. Vite
+  would discover core and tools on the first dynamic import anyway, but discovering them *while the
+  browser is importing them* re-bundles, changes the dep hash and invalidates the in-flight URLs, so
+  the first load fails with "error loading dynamically imported module" and only recovers through a
+  full reload. And `metadata`/`utils` are singletons holding the metadata provider registry: reached
+  only transitively, the optimizer inlines one copy into core's chunk while the excluded image loader
+  resolves a second raw copy, the two stop sharing a registry, and every `wadouri` load fails with
+  `no pixel data in NATURALIZED`. Naming them makes them shared chunks.
+- **`worker.format: 'es'`.** The loader spawns
+  `new Worker(new URL('./decodeImageFrameWorker.js', import.meta.url), { type: 'module' })`.
+- **`assetsInclude: ['**/*.wasm']`.**
+- **`@originjs/vite-plugin-commonjs`** (`viteCommonjs: true`, on by default). The four Emscripten
+  codec bundles are UMD/CommonJS, and they are served raw because the loader that imports them is
+  excluded from prebundling. Without this, initialisation fails with
+  `doesn't provide an export named: 'default'`. Turn it off only if you supply your own interop.
+
+It also adds the browser-only packages to `nitro.externals.external` so the server bundle cannot
+inline them.
+
+## Troubleshooting
+
+**Deflated Explicit VR Little Endian (1.2.840.10008.1.2.1.99) fails to load** with `no pixel data in
+NATURALIZED`. This is upstream: Cornerstone3D 5's default metadata path naturalises Part 10 with
+dcmjs's `AsyncDicomReader`, which does not inflate the deflated dataset — it reads no elements past
+the file meta group. The legacy path parses through `dicom-parser` with a pako inflater and handles
+it:
+
+```ts
+cornerstone: { dicomImageLoader: { useLegacyMetadataProvider: true } }
+```
+
+That path is deprecated upstream, so treat it as a workaround for this transfer syntax rather than a
+default.
+
+**`Module "fs"/"path" has been externalized for browser compatibility`** during build, pointing at
+the codec packages. Harmless — the Emscripten glue only reaches for them under Node. The equivalent
+webpack fix is `config.resolve.fallback = { fs: false }`.
+
+**Serving under a subpath, or from a CDN.** Point the loader at the binaries yourself:
+
+```ts
+cornerstone: {
+  dicomImageLoader: { wasmBasePath: '/assets/cs-wasm/' },
+}
+```
+
+One root for every codec, containing `charlswasm_decode.wasm`, `libjpegturbowasm_decode.wasm`,
+`openjpegwasm_decode.wasm` and `openjphjs.wasm`, copied from the `dist` directory of each
+`@cornerstonejs/codec-*` package.
+
+**`No known conditions for "./types" specifier in "@cornerstonejs/core"`** at build time. Something
+is importing `@cornerstonejs/core/types` as a *value*; that subpath only has a `types` condition. Use
+`import type`.
+
+**Tool names look minified** (`LengthTool` registered as `FE`). Set `build.minify: false`, or
+register tools by their `toolName` string.
+
+## Scope
+
+This release covers 2D stack viewing: initialisation, `<CornerstoneViewport>`, tool groups,
+annotations, and the `wadouri:` / `dicomfile:` loading paths. Volume and MPR viewports, segmentation,
+`@cornerstonejs/polymorphic-segmentation` and `@cornerstonejs/labelmap-interpolation` are not wired
+up yet — the last two each need their own `optimizeDeps.exclude` entry and a `peerImport` callback.
+
+## Playground
+
+```bash
+pnpm install
+pnpm dev:prepare
+pnpm samples      # downloads sample DICOM into playground/public/samples/
+pnpm dev          # http://localhost:3000 — or /?samples to load the stack immediately
+```
+
+The playground UI is built from PrimeVue components with Tailwind for layout. The module itself
+ships no UI dependency — `<CornerstoneViewport>` is an unstyled element with a default slot, so the
+consuming application supplies its own styling.
+
+The samples are the MIT-licensed test images from the Cornerstone3D repository: one CT slice in eight
+transfer syntaxes. Loading them as a single stack exercises every decoder — pako, RLE,
+jpeg-lossless-decoder-js, and the libjpeg-turbo, charls and openjpeg WASM codecs — so it doubles as a
+check that the worker and WASM wiring is intact.
+
+## Licence
+
+MIT. Cornerstone3D is MIT, maintained by the Open Health Imaging Foundation.
+
+**Not a medical device.** Nothing here is cleared for clinical use.
