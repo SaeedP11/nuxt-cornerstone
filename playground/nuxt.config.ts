@@ -1,5 +1,6 @@
 import tailwindcss from '@tailwindcss/vite'
 import Aura from '@primeuix/themes/aura'
+import { messages } from './i18n/messages'
 
 export default defineNuxtConfig({
   modules: ['../src/module', '@primevue/nuxt-module'],
@@ -38,5 +39,14 @@ export default defineNuxtConfig({
     autoInit: true,
     renderingEngineId: 'playground-engine',
     toolGroupId: 'playground-tools',
+
+    // The demo's own strings ride along in the module's catalogue. Extra keys
+    // are allowed, so an app does not need a second i18n library to translate
+    // its chrome — see "Internationalisation" in the README.
+    i18n: {
+      locale: 'en',
+      fallbackLocale: 'en',
+      messages,
+    },
   },
 })

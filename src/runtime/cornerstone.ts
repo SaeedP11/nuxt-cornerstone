@@ -1,3 +1,4 @@
+import { configureI18n, t } from './i18n'
 import { DEFAULT_TOOLS } from './types'
 import type {
   CornerstoneLibs,
@@ -35,6 +36,13 @@ const DEFAULT_OPTIONS: ResolvedCornerstoneOptions = {
   core: {},
   dicomImageLoader: {},
   tools: { enabled: true, register: [...DEFAULT_TOOLS] },
+  i18n: {
+    locale: 'en',
+    fallbackLocale: 'en',
+    messages: {},
+    numberingSystem: 'auto',
+    detect: false,
+  },
   viteCommonjs: true,
   prefix: 'Cornerstone',
   renderingEngineId: 'nuxt-cornerstone',
@@ -65,15 +73,15 @@ function merge<T>(base: T, override: unknown): T {
  */
 export function configureCornerstone(options: CornerstoneModuleOptions | undefined): void {
   state.options = merge(state.options ?? DEFAULT_OPTIONS, options)
+  // Locale has to be live before anything can throw, because every message
+  // this module produces goes through the catalogue.
+  configureI18n(state.options.i18n)
 }
 
 /** Merge extra options in before init. Throws once init has started. */
 export function setCornerstoneOptions(options: CornerstoneModuleOptions): void {
   if (state.libsPromise) {
-    throw new Error(
-      '[nuxt-cornerstone3d] Cornerstone3D is already initialising; options can no longer be changed. '
-      + 'Set `cornerstone.autoInit: false` in nuxt.config and call `ensureCornerstone(options)` from your own plugin.',
-    )
+    throw new Error(`[nuxt-cornerstone3d] ${t('error.optionsLocked')}`)
   }
   configureCornerstone(options)
 }
@@ -92,10 +100,7 @@ export function getCornerstoneOptions(): ResolvedCornerstoneOptions {
 export function ensureCornerstone(options?: CornerstoneModuleOptions): Promise<CornerstoneLibs> {
   if (import.meta.server) {
     return Promise.reject(
-      new Error(
-        '[nuxt-cornerstone3d] Cornerstone3D is browser-only (WebGL, web workers, WASM) and cannot run during SSR. '
-        + 'Call ensureCornerstone() from onMounted, or wrap the caller in <ClientOnly>.',
-      ),
+      new Error(`[nuxt-cornerstone3d] ${t('error.ssr')}`),
     )
   }
   if (options) setCornerstoneOptions(options)
@@ -142,9 +147,7 @@ function registerTools(tools: CornerstoneTools, names: CornerstoneToolClassName[
     if (registered.has(name)) continue
     const ToolClass = (tools as unknown as Record<string, unknown>)[name]
     if (typeof ToolClass !== 'function') {
-      console.warn(
-        `[nuxt-cornerstone3d] "${name}" is not an exported tool class of @cornerstonejs/tools; skipping.`,
-      )
+      console.warn(`[nuxt-cornerstone3d] ${t('warn.unknownTool', { tool: name })}`)
       continue
     }
     try {

@@ -1,4 +1,5 @@
 import { defineNuxtPlugin, useRuntimeConfig } from '#imports'
+import { t } from './i18n'
 import {
   configureCornerstone,
   ensureCornerstone,
@@ -22,7 +23,7 @@ export default defineNuxtPlugin({
       // capability probe, and nothing in the app should wait on it. Consumers
       // await ensureCornerstone() at the point they actually need it.
       ensureCornerstone().catch((error) => {
-        console.error('[nuxt-cornerstone3d] initialisation failed', error)
+        console.error(`[nuxt-cornerstone3d] ${t('error.initFailed')}`, error)
       })
     }
 

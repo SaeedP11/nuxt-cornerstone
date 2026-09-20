@@ -8,15 +8,35 @@ interface SampleEntry {
   bytes: number
 }
 
+/**
+ * What produced the current stack. Kept as data rather than as a finished
+ * string, so the footer re-renders in the new language when the locale changes
+ * instead of freezing whatever was picked at load time.
+ */
+type SourceInfo =
+  | { kind: 'samples', count: number }
+  | { kind: 'files', count: number }
+  | { kind: 'zip', file: string, images: number, series: number, skipped: number }
+
+/**
+ * A problem to show. Either a key to translate, or a message that already came
+ * out of a thrown error — those are translated at the moment they are thrown,
+ * so switching locale afterwards does not rewrite them.
+ */
+type Problem =
+  | { key: string, params?: Record<string, string | number> }
+  | { message: string }
+
 const { ready, error: initError } = useCornerstone()
 const { addFiles, addZip, toImageId, purge } = useDicomFiles()
 const tools = useCornerstoneTools()
+const { t, n, locale, isRtl, availableLocales } = useCornerstoneI18n()
 
 const imageIds = ref<string[]>([])
 const imageIndex = ref(0)
-const source = ref('')
+const source = ref<SourceInfo | null>(null)
 const busy = ref(false)
-const loadError = ref<string | null>(null)
+const problem = ref<Problem | null>(null)
 const activeTool = ref('WindowLevelTool')
 const viewport = shallowRef<CoreTypes.IStackViewport | null>(null)
 const dragging = ref(false)
@@ -28,23 +48,56 @@ const activeSeriesUid = ref<string | null>(null)
 const progress = ref<ZipProgress | null>(null)
 
 const TOOLS = [
-  { className: 'WindowLevelTool', label: 'Window/Level' },
-  { className: 'PanTool', label: 'Pan' },
-  { className: 'ZoomTool', label: 'Zoom' },
-  { className: 'LengthTool', label: 'Length' },
-  { className: 'RectangleROITool', label: 'Rectangle' },
-  { className: 'EllipticalROITool', label: 'Ellipse' },
-  { className: 'ProbeTool', label: 'Probe' },
+  { className: 'WindowLevelTool', key: 'app.tool.windowLevel' },
+  { className: 'PanTool', key: 'app.tool.pan' },
+  { className: 'ZoomTool', key: 'app.tool.zoom' },
+  { className: 'LengthTool', key: 'app.tool.length' },
+  { className: 'RectangleROITool', key: 'app.tool.rectangle' },
+  { className: 'EllipticalROITool', key: 'app.tool.ellipse' },
+  { className: 'ProbeTool', key: 'app.tool.probe' },
 ]
 
+// Endonyms: a language picker names each language in that language.
+const LOCALE_LABELS: Record<string, string> = { en: 'English', fa: 'فارسی' }
+
+const toolOptions = computed(() =>
+  TOOLS.map(tool => ({ className: tool.className, label: t(tool.key) })),
+)
+
+const localeOptions = computed(() =>
+  availableLocales.value.map(code => ({ code, label: LOCALE_LABELS[code] ?? code })),
+)
+
 const maxIndex = computed(() => Math.max(0, imageIds.value.length - 1))
+
+const problemText = computed(() => {
+  if (initError.value) return initError.value.message
+  const value = problem.value
+  if (!value) return null
+  return 'key' in value ? t(value.key, value.params) : value.message
+})
+
+const sourceLabel = computed(() => {
+  const value = source.value
+  if (!value) return ''
+  if (value.kind === 'samples') return t('app.source.samples', { count: value.count })
+  if (value.kind === 'files') return t('app.source.files', { count: value.count })
+
+  const summary = t('app.source.zip', {
+    file: value.file,
+    images: t('app.count.images', { count: value.images }),
+    series: t('app.count.series', { count: value.series }),
+  })
+  if (!value.skipped) return summary
+  return summary + t('list.separator') + t('app.count.skipped', { count: value.skipped })
+})
 
 const progressLabel = computed(() => {
   const value = progress.value
   if (!value) return ''
-  if (value.phase === 'reading') return 'Reading archive…'
-  if (value.phase === 'extracting') return 'Extracting…'
-  return `Reading headers ${value.done} / ${value.total}`
+  if (value.phase === 'reading') return t('app.progress.reading')
+  if (value.phase === 'extracting') return t('app.progress.extracting')
+  return t('app.progress.indexing', { done: value.done, total: value.total })
 })
 
 /** Indeterminate until there is something countable to count. */
@@ -56,18 +109,17 @@ const progressValue = computed(() => {
 
 async function loadSamples() {
   busy.value = true
-  loadError.value = null
+  problem.value = null
   try {
     const manifest = await $fetch<SampleEntry[]>('/samples/manifest.json')
     if (!manifest.length) throw new Error('manifest is empty')
     resetSeries()
     imageIndex.value = 0
     imageIds.value = manifest.map(entry => toImageId(`/samples/${entry.name}`))
-    source.value = `${manifest.length} bundled samples (one CT slice per transfer syntax)`
+    source.value = { kind: 'samples', count: manifest.length }
   }
   catch {
-    loadError.value
-      = 'No samples found. Run `pnpm samples` to download them into playground/public/samples/.'
+    problem.value = { key: 'app.error.noSamples' }
   }
   finally {
     busy.value = false
@@ -80,16 +132,16 @@ async function open(files: File[] | FileList | null) {
   if (!list.length) return
 
   busy.value = true
-  loadError.value = null
+  problem.value = null
   try {
     const ids = await addFiles(list)
     resetSeries()
     imageIndex.value = 0
     imageIds.value = ids
-    source.value = `${ids.length} local file${ids.length === 1 ? '' : 's'}, sorted by InstanceNumber`
+    source.value = { kind: 'files', count: ids.length }
   }
   catch (caught) {
-    loadError.value = caught instanceof Error ? caught.message : String(caught)
+    problem.value = { message: caught instanceof Error ? caught.message : String(caught) }
   }
   finally {
     busy.value = false
@@ -98,7 +150,7 @@ async function open(files: File[] | FileList | null) {
 
 async function openZip(file: File) {
   busy.value = true
-  loadError.value = null
+  problem.value = null
   progress.value = null
   try {
     const result = await addZip(file, {
@@ -108,22 +160,24 @@ async function openZip(file: File) {
     if (!result.series.length) {
       resetSeries()
       imageIds.value = []
-      loadError.value = `No DICOM images found in ${file.name}.`
+      source.value = null
+      problem.value = { key: 'app.error.noDicomInZip', params: { file: file.name } }
       return
     }
 
     series.value = result.series
     selectSeries(result.series[0]!.seriesInstanceUid)
 
-    const total = result.imageIds.length
-    const count = result.series.length
-    source.value
-      = `${file.name} — ${total} image${total === 1 ? '' : 's'} in `
-        + `${count} series${count === 1 ? '' : 'es'}`
-        + (result.skipped.length ? `, ${result.skipped.length} file(s) skipped` : '')
+    source.value = {
+      kind: 'zip',
+      file: file.name,
+      images: result.imageIds.length,
+      series: result.series.length,
+      skipped: result.skipped.length,
+    }
   }
   catch (caught) {
-    loadError.value = caught instanceof Error ? caught.message : String(caught)
+    problem.value = { message: caught instanceof Error ? caught.message : String(caught) }
   }
   finally {
     busy.value = false
@@ -176,7 +230,7 @@ function onDrop(event: DragEvent) {
 async function clear() {
   imageIds.value = []
   imageIndex.value = 0
-  source.value = ''
+  source.value = null
   resetSeries()
   await purge()
 }
@@ -200,16 +254,30 @@ function resetCamera() {
 <template>
   <div class="flex h-full flex-col bg-[var(--p-surface-950)] text-[var(--p-text-color)]">
     <header class="flex flex-wrap items-center gap-3 border-b border-[var(--p-content-border-color)] bg-[var(--p-content-background)] px-4 py-3">
-      <span class="font-semibold">nuxt-cornerstone3d</span>
+      <!-- A package name is an identifier, not prose: keep it LTR in both directions. -->
+      <span
+        dir="ltr"
+        class="font-semibold"
+      >nuxt-cornerstone3d</span>
       <Tag
-        :value="ready ? 'cornerstone ready' : 'initialising…'"
+        :value="ready ? t('app.ready') : t('app.initialising')"
         :severity="ready ? 'success' : 'secondary'"
       />
 
       <div class="flex-1" />
 
+      <SelectButton
+        v-model="locale"
+        :options="localeOptions"
+        option-label="label"
+        option-value="code"
+        :allow-empty="false"
+        size="small"
+        :aria-label="t('app.language')"
+      />
+
       <Button
-        label="Load bundled samples"
+        :label="t('app.loadSamples')"
         icon="pi pi-images"
         size="small"
         :loading="busy"
@@ -226,7 +294,7 @@ function resetCamera() {
         custom-upload
         auto
         multiple
-        choose-label="Open DICOM files…"
+        :choose-label="t('app.openFiles')"
         choose-icon="pi pi-folder-open"
         :choose-button-props="{ severity: 'secondary', size: 'small' }"
         @uploader="onPick"
@@ -238,14 +306,14 @@ function resetCamera() {
         custom-upload
         auto
         accept=".zip,application/zip,application/x-zip-compressed"
-        choose-label="Open ZIP…"
+        :choose-label="t('app.openZip')"
         choose-icon="pi pi-file-import"
         :choose-button-props="{ severity: 'secondary', size: 'small' }"
         @uploader="onPickZip"
       />
 
       <Button
-        label="Clear"
+        :label="t('app.clear')"
         icon="pi pi-times"
         severity="secondary"
         size="small"
@@ -263,18 +331,21 @@ function resetCamera() {
         :value="progressValue ?? 0"
         class="h-2 flex-1"
       />
-      <span class="w-56 text-right font-mono text-sm text-[var(--p-text-muted-color)]">
+      <span
+        class="w-56 text-end text-sm text-[var(--p-text-muted-color)]"
+        :class="isRtl ? 'tabular-nums' : 'font-mono'"
+      >
         {{ progressLabel }}
       </span>
     </div>
 
     <Message
-      v-if="initError || loadError"
+      v-if="problemText"
       severity="warn"
       :closable="false"
       class="m-0 rounded-none"
     >
-      {{ initError?.message ?? loadError }}
+      {{ problemText }}
     </Message>
 
     <nav
@@ -283,7 +354,7 @@ function resetCamera() {
     >
       <SelectButton
         v-model="activeTool"
-        :options="TOOLS"
+        :options="toolOptions"
         option-label="label"
         option-value="className"
         :allow-empty="false"
@@ -305,7 +376,7 @@ function resetCamera() {
       <div class="flex-1" />
 
       <Button
-        label="Reset camera"
+        :label="t('app.resetCamera')"
         icon="pi pi-refresh"
         severity="secondary"
         size="small"
@@ -332,10 +403,9 @@ function resetCamera() {
 
       <p
         v-else
-        class="m-auto text-[var(--p-text-muted-color)]"
+        class="m-auto max-w-prose px-4 text-center text-[var(--p-text-muted-color)]"
       >
-        Drop DICOM files or a ZIP archive here, open them from the toolbar, or load the bundled
-        samples.
+        {{ t('app.empty') }}
       </p>
     </main>
 
@@ -350,13 +420,16 @@ function resetCamera() {
         :step="1"
         class="w-80"
       />
-      <span class="font-mono text-sm text-[var(--p-text-muted-color)]">
-        {{ imageIndex + 1 }} / {{ imageIds.length }}
+      <span
+        class="text-sm text-[var(--p-text-muted-color)]"
+        :class="isRtl ? 'tabular-nums' : 'font-mono'"
+      >
+        {{ n(imageIndex + 1) }} / {{ n(imageIds.length) }}
       </span>
 
       <div class="flex-1" />
 
-      <span class="text-sm text-[var(--p-text-muted-color)]">{{ source }}</span>
+      <span class="text-sm text-[var(--p-text-muted-color)]">{{ sourceLabel }}</span>
     </footer>
   </div>
 </template>

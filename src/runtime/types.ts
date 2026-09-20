@@ -1,3 +1,4 @@
+import type { MessageCatalog } from './i18n/messages'
 import type { Types as CoreTypes } from '@cornerstonejs/core'
 import type { Types as DicomLoaderTypes } from '@cornerstonejs/dicom-image-loader'
 
@@ -56,6 +57,63 @@ export interface CornerstoneToolsOptions {
   register?: CornerstoneToolClassName[] | false
 }
 
+/**
+ * Where to read the host application's locale from.
+ *
+ * - `'i18n'` — `nuxtApp.$i18n.locale`, which is what `@nuxtjs/i18n` and
+ *   vue-i18n expose. Duck-typed, so nothing is imported and nothing breaks
+ *   when they are absent. Followed reactively.
+ * - `'html'` — the `lang` attribute on `<html>`, watched for changes. Works
+ *   with any i18n library, since they nearly all set it.
+ * - `'navigator'` — the browser's preferred language, read once at startup.
+ */
+export type LocaleSource = 'i18n' | 'html' | 'navigator'
+
+export interface CornerstoneI18nOptions {
+  /**
+   * Locale for the strings this module produces. Default: `'en'`.
+   *
+   * `en` and `fa` ship with the module; any other locale needs a catalogue of
+   * its own in {@link CornerstoneI18nOptions.messages}.
+   */
+  locale?: string
+  /** Used for keys the active locale is missing. Default: `'en'`. */
+  fallbackLocale?: string
+  /**
+   * Catalogues merged over the built-in ones, keyed by locale. Use it to
+   * override individual strings, add a locale, or register keys of your own —
+   * `t()` resolves anything in here.
+   *
+   * These travel through `runtimeConfig`, so values must be plain strings (or
+   * plural-form objects), not functions.
+   */
+  messages?: Record<string, MessageCatalog>
+  /**
+   * `'auto'` (default) lets each locale use its own digits, which means
+   * Persian-Indic digits in Farsi. `'latn'` pins every locale to 0-9, for apps
+   * whose users cross-reference slice numbers against other systems.
+   */
+  numberingSystem?: 'auto' | 'latn'
+  /**
+   * Follow the locale of the application that installed the module, instead of
+   * the one pinned in {@link CornerstoneI18nOptions.locale}. Default: `false`.
+   *
+   * `true` tries each {@link LocaleSource} in order and stops at the first one
+   * that answers; an array picks the sources and their order yourself.
+   *
+   * Only a locale the module has a catalogue for is adopted, so an app running
+   * in a language nobody has translated keeps the configured locale rather than
+   * silently flipping text direction under the viewer.
+   *
+   * Detection is client-side. The locale is module-scoped state, which on the
+   * server is shared by every in-flight request, so following a per-request
+   * locale there would let one request's language leak into another's. During
+   * SSR the configured locale is used — see "Internationalisation" in the
+   * README for the per-request case.
+   */
+  detect?: boolean | LocaleSource[]
+}
+
 export interface CornerstoneModuleOptions {
   /**
    * Initialise Cornerstone3D from the client plugin, as the app boots, rather
@@ -72,6 +130,16 @@ export interface CornerstoneModuleOptions {
   /** Passed to `dicomImageLoaderInit()`. */
   dicomImageLoader?: DicomLoaderTypes.LoaderOptions
   tools?: CornerstoneToolsOptions
+  /**
+   * Locale and message catalogues for the module's own strings — the errors it
+   * throws and the series labels `useDicomFiles()` builds.
+   *
+   * `false` turns the catalogue off: the module stays on English and ignores
+   * locale changes, which is what you want when the host app owns these
+   * strings. Route them through its i18n with `setTranslator()` from
+   * `useCornerstoneI18n()`.
+   */
+  i18n?: CornerstoneI18nOptions | false
   /**
    * Register `@originjs/vite-plugin-commonjs` on the client build. Default:
    * `true`, and it is required for images to decode at all in dev.
@@ -98,7 +166,10 @@ export type ResolvedCornerstoneOptions = Required<
     CornerstoneModuleOptions,
     'autoInit' | 'core' | 'dicomImageLoader' | 'viteCommonjs' | 'prefix' | 'renderingEngineId' | 'toolGroupId'
   >
-> & { tools: Required<CornerstoneToolsOptions> }
+> & {
+  tools: Required<CornerstoneToolsOptions>
+  i18n: Required<CornerstoneI18nOptions> | false
+}
 
 /** A mouse/keyboard binding for `setActive`, as `tools.Enums.MouseBindings`. */
 export interface ToolBinding {

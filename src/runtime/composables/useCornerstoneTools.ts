@@ -1,4 +1,5 @@
 import { ensureCornerstone, getCornerstoneOptions, getLoadedCornerstone } from '../cornerstone'
+import { t } from '../i18n'
 import type { CornerstoneTools, ToolBinding } from '../types'
 import type { Types as ToolsTypes } from '@cornerstonejs/tools'
 
@@ -30,7 +31,7 @@ export function useCornerstoneTools(toolGroupId?: string) {
 
     const group = tools.ToolGroupManager.createToolGroup(groupId)
     if (!group) {
-      throw new Error(`[nuxt-cornerstone3d] could not create tool group "${groupId}".`)
+      throw new Error(`[nuxt-cornerstone3d] ${t('error.toolGroupCreate', { groupId })}`)
     }
 
     const registered = getCornerstoneOptions().tools.register
@@ -82,8 +83,7 @@ export function useCornerstoneTools(toolGroupId?: string) {
 
     if (!group.hasTool(toolName)) {
       throw new Error(
-        `[nuxt-cornerstone3d] tool "${toolName}" is not in tool group "${groupId}". `
-        + 'Add its class name to `cornerstone.tools.register` in nuxt.config.',
+        `[nuxt-cornerstone3d] ${t('error.toolNotInGroup', { tool: toolName, groupId })}`,
       )
     }
 

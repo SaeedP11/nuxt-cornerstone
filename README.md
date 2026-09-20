@@ -125,6 +125,10 @@ files that do not carry it. Pass `{ sort: 'name' }` or `{ sort: false }` to chan
 `toImageId(url)` builds a `wadouri:` id for a Part 10 file served over HTTP. `addZip(file)` unpacks
 a ZIP archive — see below.
 
+**`useCornerstoneI18n()`** → `{ locale, setLocale, availableLocales, dir, isRtl, t, n, formatBytes,
+addMessages, setTranslator }`. Locale and translation for the strings this module produces — see
+[Internationalisation](#internationalisation).
+
 ### ZIP archives
 
 `addZip()` takes a `File`, `Blob`, `ArrayBuffer` or `Uint8Array` and returns the images inside it,
@@ -205,6 +209,13 @@ export default defineNuxtConfig({
     core: {},                        // -> coreInit(config)
     dicomImageLoader: {},            // -> dicomImageLoaderInit(options)
     tools: { enabled: true, register: [/* class names */] },
+    i18n: {                          // see Internationalisation
+      locale: 'en',
+      fallbackLocale: 'en',
+      messages: {},
+      numberingSystem: 'auto',
+      detect: false,                 // or true to follow the host app's locale
+    },
     viteCommonjs: true,
     prefix: 'Cornerstone',
     renderingEngineId: 'nuxt-cornerstone',
@@ -234,6 +245,153 @@ export default defineNuxtPlugin(() => {
     },
   })
 })
+```
+
+## Internationalisation
+
+The module ships `en` and `fa` (Farsi) and depends on no i18n library, because a viewer component
+should not force one on the app that installs it. Both catalogues are bundled — they are a few
+hundred bytes each, and the strings are needed synchronously, on paths like `asZipError()` that have
+to return an `Error` rather than a promise of one.
+
+```ts
+// nuxt.config.ts
+export default defineNuxtConfig({
+  cornerstone: {
+    i18n: {
+      locale: 'fa',
+      fallbackLocale: 'en',
+      // Merged over the built-ins. Override a string, add a locale, or
+      // register keys of your own — `t()` resolves anything in here.
+      messages: {
+        fa: { 'series.unnamed': 'سری ناشناس' },
+      },
+      // 'auto' (default) gives Farsi its Persian-Indic digits: ۱۲ تصویر.
+      // 'latn' pins every locale to 0-9, for users who cross-reference slice
+      // numbers against another system.
+      numberingSystem: 'auto',
+    },
+  },
+})
+```
+
+```vue
+<script setup lang="ts">
+const { t, n, locale, dir, isRtl, availableLocales } = useCornerstoneI18n()
+</script>
+
+<template>
+  <!-- `locale` is writable, and every viewer in the app follows it. -->
+  <select v-model="locale">
+    <option v-for="code in availableLocales" :key="code" :value="code">{{ code }}</option>
+  </select>
+  <p>{{ t('series.unnamed') }} — {{ n(1234) }}</p>
+</template>
+```
+
+Set `<html lang dir>` from the same source, so the chrome flips with the locale:
+
+```ts
+// app.vue
+const { locale, dir } = useCornerstoneI18n()
+useHead({ htmlAttrs: { lang: locale, dir } })   // pass the refs, not `.value`
+```
+
+### Following the host application's locale
+
+By default the module uses the locale you configure and nothing else. Set `detect` and it reads the
+locale from the app that installed it instead:
+
+```ts
+// nuxt.config.ts
+cornerstone: {
+  i18n: { detect: true },            // or pick the sources: ['i18n', 'html']
+}
+```
+
+`true` tries each source in order and stops at the first that answers:
+
+| Source | Reads | Follows changes |
+| --- | --- | --- |
+| `'i18n'` | `nuxtApp.$i18n.locale` — `@nuxtjs/i18n` and vue-i18n, in either Composition or legacy mode | yes, reactively |
+| `'html'` | the `lang` attribute on `<html>`, which nearly every i18n library sets | yes, via `MutationObserver` |
+| `'navigator'` | the browser's preferred language | no, read once at startup |
+
+Nothing is imported to do this — `$i18n` is duck-typed, so the module gains no dependency and simply
+declines when no i18n library is installed.
+
+**Only a locale the module has a catalogue for is adopted.** An app running in a language nobody has
+translated keeps the configured locale, rather than flipping text direction under the viewer to go
+on showing English anyway. A host that *starts* in such a language is never hooked up at all, so it
+cannot take the module over later either.
+
+Two things worth knowing:
+
+- **Detection is client-side.** The locale is module-scoped state, which on the server is shared by
+  every in-flight request — following a per-request locale there would let one request's language
+  leak into another's. During SSR the configured locale is used, so set `cornerstone.i18n.locale` to
+  whatever your app's default is and detection takes over after hydration. If you need a genuinely
+  per-request locale, use `i18n: false` and the translator below: your own i18n has request scope
+  and this does not.
+- **Do not use the `'html'` source if you set `<html lang>` *from* this module's locale**, as the
+  playground does. It is a cycle. It settles, because adopting the locale that is already active
+  changes nothing, but you then have no source of truth.
+
+### What gets translated
+
+Everything the module produces itself: the errors it throws, and the series labels
+`useDicomFiles()` builds — `Series 3 (CT, 12 images)` becomes `سری ۳ (CT، ۱۲ تصویر)`. Identifiers
+stay in English inside every translation, because `cornerstone.autoInit` and `ensureCornerstone()`
+are things you have to type or search for.
+
+An error is translated when it is **thrown**, not when it is displayed. Switching locale does not
+rewrite an error already sitting in a `ref`.
+
+### RTL and the viewport
+
+`<CornerstoneViewport>` sets `dir="ltr"` on itself and you should leave it there. In an RTL app the
+surrounding chrome flips, but a DICOM image must not: left and right are facts about the patient,
+and mirroring one turns a left-sided finding into a right-sided one. It is a default rather than a
+hard-coded value, so an app with its own reason to change it still can by passing `dir`.
+
+### Using your own i18n instead
+
+If the app already runs vue-i18n, `@nuxtjs/i18n` or anything else, hand it these strings:
+
+```ts
+// nuxt.config.ts → cornerstone: { i18n: false }
+
+// app/plugins/cornerstone-i18n.client.ts
+export default defineNuxtPlugin(() => {
+  const { t } = useI18n()
+  const { setTranslator } = useCornerstoneI18n()
+  // Return `undefined` for a key you do not own and the built-in English
+  // answers instead, so you can take over three strings or all of them.
+  setTranslator((key, params) => (te(key) ? t(key, params) : undefined))
+})
+```
+
+`i18n: false` keeps the module on English and makes `setLocale()` a no-op, so there is no second
+locale quietly tracking alongside yours.
+
+The locale is module-scoped state, shared by every request on the server. That is correct for a
+locale fixed at build time and wrong for a per-request one, so `setLocale()` is a client-side call.
+For per-request locales, keep `i18n: false` and let your own i18n — which has request scope — feed
+the translator.
+
+### Adding a locale
+
+Nothing in the module is specific to `en` and `fa`. Plural forms come from `Intl.PluralRules`, so a
+catalogue supplies whichever CLDR categories its language uses and missing ones fall back to
+`other`; text direction is derived from the language subtag.
+
+```ts
+messages: {
+  ar: {
+    'series.unnamed': 'سلسلة بدون اسم',
+    'series.images': { zero: 'لا صور', one: 'صورة واحدة', two: 'صورتان', few: '{count} صور', other: '{count} صورة' },
+  },
+}
 ```
 
 ## What the module does to Vite
@@ -326,6 +484,12 @@ pnpm dev          # http://localhost:3000 — or /?samples to load the stack imm
 The playground UI is built from PrimeVue components with Tailwind for layout. The module itself
 ships no UI dependency — `<CornerstoneViewport>` is an unstyled element with a default slot, so the
 consuming application supplies its own styling.
+
+The header carries an **English / فارسی** switch. It flips `<html lang dir>`, loads a Persian face,
+and renders counts in Persian-Indic digits, while the viewport stays left-to-right. The demo's own
+strings live in `playground/i18n/messages.ts` and are registered through
+`cornerstone.i18n.messages`, which is the point of it: the catalogue takes arbitrary keys, so an app
+can translate its chrome from one source without a second i18n library.
 
 The samples are the MIT-licensed test images from the Cornerstone3D repository: one CT slice in eight
 transfer syntaxes. Loading them as a single stack exercises every decoder — pako, RLE,

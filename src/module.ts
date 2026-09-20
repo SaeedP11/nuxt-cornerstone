@@ -14,7 +14,22 @@ import type { CornerstoneModuleOptions } from './runtime/types'
 
 export type ModuleOptions = CornerstoneModuleOptions
 
-export type { CornerstoneModuleOptions, ResolvedCornerstoneOptions } from './runtime/types'
+export type {
+  CornerstoneI18nOptions,
+  CornerstoneModuleOptions,
+  LocaleSource,
+  ResolvedCornerstoneOptions,
+} from './runtime/types'
+
+export type {
+  CornerstoneMessageKey,
+  CornerstoneTranslator,
+  MessageCatalog,
+  MessageKey,
+  MessageParams,
+  MessageValue,
+  PluralCategory,
+} from './runtime/i18n'
 
 export type {
   AddFilesOptions,
@@ -61,6 +76,13 @@ export default defineNuxtModule<ModuleOptions>({
     core: {},
     dicomImageLoader: {},
     tools: { enabled: true, register: [...DEFAULT_TOOLS] },
+    i18n: {
+      locale: 'en',
+      fallbackLocale: 'en',
+      messages: {},
+      numberingSystem: 'auto',
+      detect: false,
+    },
     viteCommonjs: true,
     prefix: 'Cornerstone',
     renderingEngineId: 'nuxt-cornerstone',
@@ -170,6 +192,10 @@ export default defineNuxtModule<ModuleOptions>({
     nuxt.options.nitro.externals = defu(nuxt.options.nitro.externals, {
       external: BROWSER_ONLY_PACKAGES,
     })
+
+    // Universal: the locale has to be set during SSR as well, or the first
+    // paint is English and <html lang dir> disagrees with the client.
+    addPlugin({ src: resolve('./runtime/plugin.i18n') })
 
     addPlugin({ src: resolve('./runtime/plugin.client'), mode: 'client' })
 

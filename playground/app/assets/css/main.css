@@ -23,3 +23,16 @@
  * README.
  */
 @source "../../../../src/runtime";
+
+/*
+ * Persian typography for RTL locales.
+ *
+ * Vazirmatn is loaded from Google Fonts by app.vue, and only when the locale is
+ * RTL. The rest of the stack is what keeps offline development and machines
+ * without it readable — Tahoma in particular ships Persian glyphs nearly
+ * everywhere and is the conventional fallback.
+ */
+[dir="rtl"] {
+  font-family: Vazirmatn, Vazir, Sahel, "IRANSans", "Noto Sans Arabic", Tahoma,
+    ui-sans-serif, system-ui, sans-serif;
+}

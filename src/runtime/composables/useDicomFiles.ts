@@ -1,4 +1,5 @@
 import { ensureCornerstone } from '../cornerstone'
+import { t } from '../i18n'
 import { unzipDicom } from '../dicom-zip'
 import type { SkippedEntry, ZipEntry } from '../dicom-zip'
 
@@ -319,18 +320,20 @@ function toSeries(key: string, images: IndexedImage[]): DicomSeries {
 
   const name = description
     ?? (key && !header?.seriesInstanceUid ? key : null)
-    ?? (seriesNumber !== null ? `Series ${seriesNumber}` : 'Unnamed series')
+    ?? (seriesNumber !== null
+      ? t('series.numbered', { number: seriesNumber })
+      : t('series.unnamed'))
 
-  const details = [modality, `${count} image${count === 1 ? '' : 's'}`]
+  const details = [modality, t('series.images', { count })]
     .filter(Boolean)
-    .join(', ')
+    .join(t('list.separator'))
 
   return {
     seriesInstanceUid: header?.seriesInstanceUid ?? key,
     seriesNumber,
     description,
     modality,
-    label: `${name} (${details})`,
+    label: t('series.label', { name, details }),
     imageIds: images.map(image => image.imageId),
   }
 }

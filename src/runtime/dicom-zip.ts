@@ -1,4 +1,7 @@
+import { formatBytes, t } from './i18n'
 import type { Unzipped, UnzipFileInfo } from 'fflate'
+
+export { formatBytes } from './i18n'
 
 /**
  * ZIP extraction for DICOM archives.
@@ -123,10 +126,7 @@ export async function unzipDicom(
 
     claimedBytes += file.originalSize
     if (claimedBytes > maxBytes) {
-      throw new Error(
-        `Archive expands to more than ${formatBytes(maxBytes)} of DICOM data. `
-        + 'Extract it and open the series you need, or raise `maxBytes`.',
-      )
+      throw new Error(t('zip.tooLarge', { limit: formatBytes(maxBytes) }))
     }
     return true
   }
@@ -170,18 +170,7 @@ export async function unzipDicom(
 function asZipError(error: unknown): Error {
   const message = error instanceof Error ? error.message : String(error)
   if (/invalid zip|no central directory|end of central/i.test(message)) {
-    return new Error('That file is not a readable ZIP archive.')
+    return new Error(t('zip.notReadable'))
   }
-  return new Error(`Could not read the ZIP archive: ${message}`)
-}
-
-export function formatBytes(bytes: number): string {
-  const units = ['B', 'KB', 'MB', 'GB']
-  let value = bytes
-  let unit = 0
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024
-    unit++
-  }
-  return `${value < 10 && unit > 0 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`
+  return new Error(t('zip.readFailed', { message }))
 }

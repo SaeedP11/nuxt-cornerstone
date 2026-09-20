@@ -251,9 +251,16 @@ defineExpose({
 
     These are Tailwind utilities: a consuming app needs Tailwind and has to scan
     this package — see “Tailwind” in the README.
+
+    `dir="ltr"` is deliberate and should stay. In an RTL app the surrounding
+    chrome flips, but a DICOM image must not: left and right are facts about the
+    patient, and mirroring one turns a left-sided finding into a right-sided
+    one. It is written as a default rather than hard-coded, so an app that has
+    its own reason to change it still can by passing `dir` to the component.
   -->
   <div
     ref="element"
+    dir="ltr"
     class="nuxt-cornerstone-viewport relative h-full w-full touch-none overflow-hidden [&>canvas]:block"
     :data-status="status"
     @contextmenu.prevent
