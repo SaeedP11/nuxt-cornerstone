@@ -22,6 +22,11 @@ export const en: MessageCatalog = {
   'app.empty':
     'Drop DICOM files or a ZIP archive here, open them from the toolbar, or load the bundled samples.',
 
+  'app.series.heading': 'Series',
+  'app.sidebar.collapse': 'Hide the series list',
+  'app.sidebar.expand': 'Show the series list',
+
+  'app.tools.heading': 'Tools',
   'app.tool.windowLevel': 'Window/Level',
   'app.tool.pan': 'Pan',
   'app.tool.zoom': 'Zoom',
@@ -29,6 +34,16 @@ export const en: MessageCatalog = {
   'app.tool.rectangle': 'Rectangle',
   'app.tool.ellipse': 'Ellipse',
   'app.tool.probe': 'Probe',
+
+  'app.shortcuts.title': 'Keyboard shortcuts',
+  // The horizontal arrows follow the reading direction, so the help lists the
+  // pair rather than claiming which one goes forward.
+  'app.shortcuts.slice': 'Previous / next image',
+  'app.shortcuts.page': 'Jump ten images',
+  'app.shortcuts.ends': 'First / last image',
+  'app.shortcuts.tools': 'Pick the tool at that position on the rail',
+  'app.shortcuts.reset': 'Reset the camera',
+  'app.shortcuts.help': 'Open this list',
 
   'app.progress.reading': 'Reading archive…',
   'app.progress.extracting': 'Extracting…',
@@ -65,6 +80,11 @@ export const fa: MessageCatalog = {
   'app.empty':
     'فایل‌های دایکام یا یک بایگانی ZIP را اینجا رها کنید، از نوار ابزار بازشان کنید، یا نمونه‌های همراه را بارگذاری کنید.',
 
+  'app.series.heading': 'سری‌ها',
+  'app.sidebar.collapse': 'پنهان کردن فهرست سری‌ها',
+  'app.sidebar.expand': 'نمایش فهرست سری‌ها',
+
+  'app.tools.heading': 'ابزارها',
   'app.tool.windowLevel': 'پنجره/سطح',
   'app.tool.pan': 'جابه‌جایی',
   'app.tool.zoom': 'بزرگ‌نمایی',
@@ -72,6 +92,14 @@ export const fa: MessageCatalog = {
   'app.tool.rectangle': 'مستطیل',
   'app.tool.ellipse': 'بیضی',
   'app.tool.probe': 'کاوشگر',
+
+  'app.shortcuts.title': 'میان‌برهای صفحه‌کلید',
+  'app.shortcuts.slice': 'تصویر قبلی / بعدی',
+  'app.shortcuts.page': 'پرش ده تصویر',
+  'app.shortcuts.ends': 'نخستین / آخرین تصویر',
+  'app.shortcuts.tools': 'انتخاب ابزار بر اساس جایگاه آن در نوار',
+  'app.shortcuts.reset': 'بازنشانی دوربین',
+  'app.shortcuts.help': 'باز کردن همین فهرست',
 
   'app.progress.reading': 'در حال خواندن بایگانی…',
   'app.progress.extracting': 'در حال استخراج…',
