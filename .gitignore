@@ -6,3 +6,5 @@ dist
 .cache
 *.log
 playground/public/samples
+# Added by code-review-graph
+.code-review-graph/
