@@ -25,17 +25,6 @@ export const en: MessageCatalog = {
   'app.sidebar.collapse': 'Hide the series list',
   'app.sidebar.expand': 'Show the series list',
 
-  // Findings come from /api/findings, which stands in for a reporting service.
-  'app.findings.load': 'Load AI findings',
-  'app.findings.show': 'Show findings',
-  'app.findings.hide': 'Hide findings',
-  'app.findings.box': 'Nodule {index} · {confidence}%',
-  'app.findings.summary':
-    '{placed} of {boxes} boxes placed, from {findings} findings at {threshold}% confidence or better.',
-  'app.findings.unmatched':
-    'None of the {boxes} boxes belong to the images on screen — the report was made from series {series}. Open that study to see them.',
-  'app.findings.failed': 'Could not load the findings: {message}',
-
   'app.tools.heading': 'Tools',
   'app.tool.windowLevel': 'Window/Level',
   'app.tool.pan': 'Pan',
@@ -104,16 +93,6 @@ export const fa: MessageCatalog = {
   'app.series.heading': 'سری‌ها',
   'app.sidebar.collapse': 'پنهان کردن فهرست سری‌ها',
   'app.sidebar.expand': 'نمایش فهرست سری‌ها',
-
-  'app.findings.load': 'بارگذاری یافته‌های هوش مصنوعی',
-  'app.findings.show': 'نمایش یافته‌ها',
-  'app.findings.hide': 'پنهان کردن یافته‌ها',
-  'app.findings.box': 'ندول {index} · ٪{confidence}',
-  'app.findings.summary':
-    '{placed} کادر از {boxes} کادر قرار گرفت، از {findings} یافته با اطمینان ٪{threshold} یا بیشتر.',
-  'app.findings.unmatched':
-    'هیچ‌یک از {boxes} کادر به تصاویر روی صفحه تعلق ندارد — این گزارش از سری {series} ساخته شده است. برای دیدن آن‌ها همان مطالعه را باز کنید.',
-  'app.findings.failed': 'بارگذاری یافته‌ها ممکن نشد: {message}',
 
   'app.tools.heading': 'ابزارها',
   'app.tool.windowLevel': 'پنجره/سطح',

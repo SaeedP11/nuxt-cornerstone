@@ -566,14 +566,6 @@ strings live in `playground/i18n/messages.ts` and are registered through
 `cornerstone.i18n.messages`, which is the point of it: the catalogue takes arbitrary keys, so an app
 can translate its chrome from one source without a second i18n library.
 
-**Load AI findings** fetches `/api/findings`, a Nitro route standing in for a reporting service. It
-returns one nodule detector's output verbatim, and `playground/app/composables/useStudyFindings.ts`
-translates it into the boxes `useDicomAnnotations()` takes — which is the split the module is built
-around: it knows about boxes and SOPInstanceUIDs, and the application knows about its own vendor's
-JSON. The report was produced from one particular series, so with any other study open it reports
-that none of its boxes belong to the images on screen rather than drawing nothing and looking
-broken.
-
 The samples are the MIT-licensed test images from the Cornerstone3D repository: one CT slice in eight
 transfer syntaxes. Loading them as a single stack exercises every decoder — pako, RLE,
 jpeg-lossless-decoder-js, and the libjpeg-turbo, charls and openjpeg WASM codecs — so it doubles as a
