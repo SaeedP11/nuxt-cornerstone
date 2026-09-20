@@ -79,13 +79,171 @@ function isMetadataPath(path: string): boolean {
 const NON_DICOM_EXTENSION
   = /\.(?:txt|pdf|jpe?g|png|gif|bmp|tiff?|svg|xml|html?|json|csv|tsv|md|rtf|docx?|xlsx?|pptx?|zip|gz|tgz|bz2|xz|rar|7z|exe|dll|so|dylib|bat|sh|ini|cfg|log|db|sqlite|mp4|avi|mov|wav|mp3)$/i
 
+/**
+ * Rule a file out by its name alone, and say why, or `null` to keep it.
+ *
+ * Exported because the same question is asked of files that never came from an
+ * archive — a folder picked in a file dialog carries the same `.DS_Store` and
+ * report PDFs a burned CD does — and one definition of "not DICOM" is better
+ * than two that drift apart.
+ */
+export function nonDicomNameReason(path: string): 'metadata' | 'not-dicom-extension' | null {
+  if (isMetadataPath(path)) return 'metadata'
+  if (NON_DICOM_EXTENSION.test(path)) return 'not-dicom-extension'
+  return null
+}
+
 const DICM_MAGIC = [0x44, 0x49, 0x43, 0x4D] // 'DICM'
 const DICM_MAGIC_OFFSET = 128 // after the Part 10 preamble
 
+/** Bytes needed before {@link hasDicmMagic} can answer. */
+export const DICM_MAGIC_BYTES = DICM_MAGIC_OFFSET + DICM_MAGIC.length
+
 /** Part 10 files carry `DICM` at byte 128, right after the preamble. */
-function hasDicmMagic(bytes: Uint8Array): boolean {
+export function hasDicmMagic(bytes: Uint8Array): boolean {
   if (bytes.length < DICM_MAGIC_OFFSET + DICM_MAGIC.length) return false
   return DICM_MAGIC.every((byte, i) => bytes[DICM_MAGIC_OFFSET + i] === byte)
+}
+
+/**
+ * Enough bytes for {@link isDicomContent} to decide: the Part 10 preamble plus
+ * room for the first few elements of a dataset that has no preamble.
+ */
+export const CONTENT_PROBE_BYTES = 16 * 1024
+
+/**
+ * Leading bytes of formats that are definitely not DICOM.
+ *
+ * A negative test is not sufficient on its own — renaming a PNG to `.dcm`
+ * changes nothing about its bytes, but neither does renaming an arbitrary
+ * binary — so this only short-circuits the common cases before the structural
+ * probe below does the real work.
+ */
+const FOREIGN_SIGNATURES: number[][] = [
+  [0x89, 0x50, 0x4E, 0x47], // PNG
+  [0xFF, 0xD8, 0xFF], //       JPEG
+  [0x47, 0x49, 0x46, 0x38], // GIF8
+  [0x42, 0x4D], //             BMP
+  [0x25, 0x50, 0x44, 0x46], // %PDF
+  [0x50, 0x4B, 0x03, 0x04], // ZIP
+  [0x1F, 0x8B], //             gzip
+  [0x52, 0x61, 0x72, 0x21], // Rar!
+  [0x37, 0x7A, 0xBC, 0xAF], // 7z
+  [0x49, 0x49, 0x2A, 0x00], // TIFF little-endian
+  [0x4D, 0x4D, 0x00, 0x2A], // TIFF big-endian
+  [0x52, 0x49, 0x46, 0x46], // RIFF (wav, avi, webp)
+  [0x4F, 0x67, 0x67, 0x53], // OggS
+  [0x7F, 0x45, 0x4C, 0x46], // ELF
+  [0x4D, 0x5A], //             DOS/PE executable
+  [0x49, 0x44, 0x33], //       ID3 (mp3)
+  [0x3C, 0x3F, 0x78, 0x6D], // <?xm
+  [0x3C, 0x21, 0x44, 0x4F], // <!DO
+]
+
+function hasForeignSignature(bytes: Uint8Array): boolean {
+  return FOREIGN_SIGNATURES.some(
+    signature => signature.every((byte, i) => bytes[i] === byte),
+  )
+}
+
+/**
+ * Groups a DICOM dataset can legitimately begin with: file meta, or the
+ * identifying module that opens an image dataset. Elements are stored in
+ * ascending tag order, so nothing else can come first.
+ */
+const OPENING_GROUPS = new Set([0x0002, 0x0008])
+
+/** Elements read before the structure is taken as convincing. */
+const PROBE_ELEMENTS = 4
+
+const readU16 = (bytes: Uint8Array, at: number, littleEndian: boolean): number =>
+  littleEndian
+    ? bytes[at]! | (bytes[at + 1]! << 8)
+    : (bytes[at]! << 8) | bytes[at + 1]!
+
+/**
+ * Does this look like DICOM from its content alone?
+ *
+ * An extension proves nothing in either direction — plenty of DICOM files are
+ * named `IM000001`, and anything at all can be renamed to `.dcm` — so the
+ * answer has to come from the bytes.
+ *
+ * Part 10 files say so outright with their magic. A dataset stored without a
+ * preamble has nothing to declare, so its structure is read instead: the first
+ * element must open a group a dataset may legitimately open with, and the
+ * elements after it must parse and ascend. A PNG fails at the first tag, whose
+ * group reads as 0x5089.
+ *
+ * This is a positive test. Anything that cannot show one of those two things
+ * is rejected, which is the opposite of assuming a file is DICOM because
+ * nothing proved otherwise.
+ */
+export async function isDicomContent(bytes: Uint8Array): Promise<boolean> {
+  if (hasDicmMagic(bytes)) return true
+  if (bytes.length < 8) return false
+  if (hasForeignSignature(bytes)) return false
+
+  // A raw big-endian dataset has no preamble and cannot be walked with the
+  // little-endian reader below. It is rare enough that a plausible opening tag
+  // is taken as answer enough, rather than carrying a second parser for it.
+  if (OPENING_GROUPS.has(readU16(bytes, 0, false))) return true
+  if (!OPENING_GROUPS.has(readU16(bytes, 0, true))) return false
+
+  const dicomParser = await loadDicomParser()
+  return walksAsDataset(dicomParser, bytes, false) || walksAsDataset(dicomParser, bytes, true)
+}
+
+/**
+ * Read the first few elements and check they form an ascending, self-
+ * consistent sequence. Reading is left to dicom-parser so that VR and length
+ * encoding are handled the way the rest of the stack handles them; a length
+ * that runs past the buffer makes it throw, which is the answer we want.
+ */
+function walksAsDataset(
+  dicomParser: DicomParser,
+  bytes: Uint8Array,
+  explicitVr: boolean,
+): boolean {
+  try {
+    const stream = new dicomParser.ByteStream(dicomParser.littleEndianByteArrayParser, bytes, 0)
+    let previousTag = ''
+
+    for (let read = 0; read < PROBE_ELEMENTS; read++) {
+      if (stream.position + 8 > bytes.length) return read > 0
+      const element = explicitVr
+        ? dicomParser.readDicomElementExplicit(stream)
+        : dicomParser.readDicomElementImplicit(stream)
+
+      if (!/^x[0-9a-f]{8}$/.test(element.tag)) return false
+      if (element.tag <= previousTag) return false
+      previousTag = element.tag
+    }
+    return true
+  }
+  catch {
+    // Ran off the end, or the lengths did not make sense for this encoding.
+    return false
+  }
+}
+
+export type DicomParser = typeof import('dicom-parser')
+
+let dicomParserPromise: Promise<DicomParser> | null = null
+
+/**
+ * dicom-parser is CommonJS, hence the default-interop dance.
+ *
+ * `useDicomFiles` keeps its own copy of this rather than importing this one.
+ * The duplication is deliberate and cheap — both resolve the same module, so
+ * there is one parser either way — and it keeps the identification code here
+ * from becoming something the composable depends on.
+ */
+function loadDicomParser(): Promise<DicomParser> {
+  dicomParserPromise ??= import('dicom-parser').then((mod) => {
+    const candidate = mod as unknown as { default?: DicomParser }
+    return candidate.default ?? (mod as unknown as DicomParser)
+  })
+  return dicomParserPromise
 }
 
 /**
@@ -111,12 +269,9 @@ export async function unzipDicom(
     // fflate reports directory members with a trailing slash and no content.
     if (file.name.endsWith('/')) return false
 
-    if (isMetadataPath(file.name)) {
-      skipped.push({ path: file.name, reason: 'metadata' })
-      return false
-    }
-    if (NON_DICOM_EXTENSION.test(file.name)) {
-      skipped.push({ path: file.name, reason: 'not-dicom-extension' })
+    const nameReason = nonDicomNameReason(file.name)
+    if (nameReason) {
+      skipped.push({ path: file.name, reason: nameReason })
       return false
     }
     if (file.originalSize === 0) {
@@ -138,29 +293,21 @@ export async function unzipDicom(
     })
   })
 
+  // Every member has to show that it is DICOM. A file without a preamble has
+  // no magic to show, so its structure is read instead — which is what keeps
+  // raw datasets working without also waving through whatever else happens to
+  // be in the archive.
   const entries: ZipEntry[] = []
   for (const [path, bytes] of Object.entries(unzipped) as [string, Uint8Array<ArrayBuffer>][]) {
     if (bytes.length === 0) {
       skipped.push({ path, reason: 'empty' })
       continue
     }
-    // Files without a preamble (raw datasets, Implicit VR) have no magic to
-    // check. They are kept and left for the header reader to accept or reject,
-    // because rejecting them here would drop valid images.
-    entries.push({ path, bytes })
-  }
-
-  // Once anything in the archive is unambiguously Part 10, treat the magic as
-  // reliable for that archive and drop the members that lack it. A CD that
-  // mixes Part 10 images with stray binaries is the common case; an archive of
-  // preamble-less datasets is not, and it still works because this only
-  // narrows when there is a positive signal to narrow on.
-  const withMagic = entries.filter(entry => hasDicmMagic(entry.bytes))
-  if (withMagic.length > 0 && withMagic.length < entries.length) {
-    for (const entry of entries) {
-      if (!hasDicmMagic(entry.bytes)) skipped.push({ path: entry.path, reason: 'not-dicom' })
+    if (!await isDicomContent(bytes)) {
+      skipped.push({ path, reason: 'not-dicom' })
+      continue
     }
-    return { entries: withMagic, skipped }
+    entries.push({ path, bytes })
   }
 
   return { entries, skipped }

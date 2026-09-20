@@ -7,8 +7,7 @@ defineProps<{
 
 const emit = defineEmits<{
   loadSamples: []
-  openFiles: [files: File[]]
-  openZip: [file: File]
+  open: [files: File[]]
   clear: []
   showHelp: []
 }>()
@@ -26,12 +25,7 @@ const localeOptions = computed(() =>
 // to us instead of posting them anywhere; it clears its own input afterwards,
 // so the same files can be picked again.
 function onPick(event: { files: File | File[] }) {
-  emit('openFiles', Array.isArray(event.files) ? event.files : [event.files])
-}
-
-function onPickZip(event: { files: File | File[] }) {
-  const file = Array.isArray(event.files) ? event.files[0] : event.files
-  if (file) emit('openZip', file)
+  emit('open', Array.isArray(event.files) ? event.files : [event.files])
 }
 </script>
 
@@ -79,31 +73,26 @@ function onPickZip(event: { files: File | File[] }) {
     </DevOnly>
 
     <!--
-      No `accept`: FileUpload turns it into a validation rule, and plenty of
-      DICOM files carry no extension at all (IM000001, I10), so filtering on
-      one would reject exactly the files a viewer is expected to open.
+      One picker for both: loose DICOM files and ZIP archives go to the same
+      handler, which unpacks an archive if it finds one and vets the rest.
+      Two buttons asked the user to classify their own files before the viewer
+      would look at them.
+
+      No `accept`, even though an archive has a reliable extension: FileUpload
+      turns `accept` into a validation rule for the whole selection, and plenty
+      of DICOM files carry no extension at all (IM000001, I10), so filtering on
+      one would reject exactly the files a viewer is expected to open. What
+      does not belong is turned away afterwards, on its contents, by the guard.
     -->
     <FileUpload
       mode="basic"
       custom-upload
       auto
       multiple
-      :choose-label="t('app.openFiles')"
+      :choose-label="t('app.open')"
       choose-icon="pi pi-folder-open"
-      :choose-button-props="{ severity: 'secondary', size: 'small' }"
+      :choose-button-props="{ severity: 'secondary', size: 'small', loading: busy }"
       @uploader="onPick"
-    />
-
-    <!-- An archive does have a reliable extension, so this one can filter. -->
-    <FileUpload
-      mode="basic"
-      custom-upload
-      auto
-      accept=".zip,application/zip,application/x-zip-compressed"
-      :choose-label="t('app.openZip')"
-      choose-icon="pi pi-file-import"
-      :choose-button-props="{ severity: 'secondary', size: 'small' }"
-      @uploader="onPickZip"
     />
 
     <Button

@@ -166,10 +166,16 @@ everything.
 Archive members are filtered twice. Before anything is inflated, entries are dropped by name and
 declared size — directories, `__MACOSX/`, dotfiles, `DICOMDIR`, `Thumbs.db`, and extensions that are
 never DICOM (`.pdf`, `.jpg`, `.txt` and friends). There is no allowlist in the other direction,
-because plenty of DICOM files are named `IM000001` or `I10`. What survives is then judged on its
-bytes: if any member carries the Part 10 `DICM` magic at offset 128, the members that do not are
-dropped as well. An archive of preamble-less datasets has no such positive signal, so nothing is
-narrowed and every member is kept.
+because plenty of DICOM files are named `IM000001` or `I10`.
+
+What survives is then judged on its bytes, and has to prove itself. A Part 10 file says so with the
+`DICM` magic at offset 128. A dataset stored without a preamble has nothing to declare, so its
+structure is read instead: the first element must open a group a dataset may legitimately open with
+(file meta, or the identifying module), and the elements after it must parse and ascend. Anything
+that can show neither is skipped as `not-dicom`.
+
+A name is not evidence in either direction — a PNG renamed to `.dcm` is still a PNG, and it is
+rejected here on its first tag, whose group reads as `0x5089`.
 
 | Option | Default | |
 | --- | --- | --- |

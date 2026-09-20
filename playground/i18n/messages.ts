@@ -15,8 +15,7 @@ export const en: MessageCatalog = {
   'app.ready': 'cornerstone ready',
   'app.initialising': 'initialising…',
   'app.loadSamples': 'Load bundled samples',
-  'app.openFiles': 'Open DICOM files…',
-  'app.openZip': 'Open ZIP…',
+  'app.open': 'Open DICOM or ZIP…',
   'app.clear': 'Clear',
   'app.resetCamera': 'Reset camera',
   'app.empty':
@@ -50,6 +49,20 @@ export const en: MessageCatalog = {
   'app.error.noSamples':
     'No samples found. Run `pnpm samples` to download them into playground/public/samples/.',
   'app.error.noDicomInZip': 'No DICOM images found in {file}.',
+  'app.error.noDicomFiles': {
+    one: 'That file is not DICOM.',
+    other: 'None of those {count} files is DICOM.',
+  },
+
+  // What the guard turned away, and why. Reasons read as a noun phrase so
+  // they drop straight into "{name} ({reason})".
+  'app.skipped.summary': '{count}: {named}',
+  'app.skipped.more': '{count}: {named}, and {rest} more',
+  'app.skipped.entry': '{name} ({reason})',
+  'app.skip.metadata': 'housekeeping file',
+  'app.skip.notDicomExtension': 'not a DICOM extension',
+  'app.skip.notDicom': 'no DICOM header',
+  'app.skip.empty': 'empty',
 
   'app.source.samples': {
     one: '{count} bundled sample (one CT slice per transfer syntax)',
@@ -71,8 +84,7 @@ export const fa: MessageCatalog = {
   'app.ready': 'Cornerstone آماده است',
   'app.initialising': 'در حال راه‌اندازی…',
   'app.loadSamples': 'بارگذاری نمونه‌های همراه',
-  'app.openFiles': 'باز کردن فایل‌های دایکام…',
-  'app.openZip': 'باز کردن فایل ZIP…',
+  'app.open': 'باز کردن دایکام یا ZIP…',
   'app.clear': 'پاک‌سازی',
   'app.resetCamera': 'بازنشانی دوربین',
   'app.empty':
@@ -106,6 +118,15 @@ export const fa: MessageCatalog = {
   'app.error.noSamples':
     'نمونه‌ای پیدا نشد. برای دانلود آن‌ها در playground/public/samples/ دستور `pnpm samples` را اجرا کنید.',
   'app.error.noDicomInZip': 'هیچ تصویر دایکامی در {file} پیدا نشد.',
+  'app.error.noDicomFiles': { other: 'هیچ‌کدام از آن {count} فایل دایکام نیست.' },
+
+  'app.skipped.summary': '{count}: {named}',
+  'app.skipped.more': '{count}: {named} و {rest} مورد دیگر',
+  'app.skipped.entry': '{name} ({reason})',
+  'app.skip.metadata': 'فایل جانبی',
+  'app.skip.notDicomExtension': 'پسوند دایکام نیست',
+  'app.skip.notDicom': 'سرآیند دایکام ندارد',
+  'app.skip.empty': 'خالی',
 
   'app.source.samples': { other: '{count} نمونهٔ همراه (یک برش CT برای هر نحو انتقال)' },
   'app.source.files': { other: '{count} فایل محلی، مرتب‌شده بر اساس InstanceNumber' },

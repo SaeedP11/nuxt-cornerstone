@@ -1,4 +1,17 @@
 import type { DicomSeries, ZipProgress } from '../../../src/runtime/composables/useDicomFiles'
+import type { SkipReason } from '../../../src/runtime/dicom-zip'
+import type { RejectedFile } from './useDicomGuard'
+
+/** Why the guard turned a file away, as something a reader can act on. */
+const SKIP_REASON_KEY: Record<SkipReason, string> = {
+  'metadata': 'app.skip.metadata',
+  'not-dicom-extension': 'app.skip.notDicomExtension',
+  'not-dicom': 'app.skip.notDicom',
+  'empty': 'app.skip.empty',
+}
+
+/** Files named individually before the rest become "and N more". */
+const MAX_NAMED_REJECTS = 3
 
 interface SampleEntry {
   name: string
@@ -13,7 +26,7 @@ interface SampleEntry {
  */
 export type SourceInfo =
   | { kind: 'samples', count: number }
-  | { kind: 'files', count: number }
+  | { kind: 'files', count: number, skipped: number }
   | { kind: 'zip', file: string, images: number, series: number, skipped: number }
 
 /**
@@ -51,6 +64,9 @@ export function useViewerStudy() {
   const activeSeriesUid = ref<string | null>(null)
   const progress = ref<ZipProgress | null>(null)
 
+  /** What the guard turned away on the last open, for the notice below. */
+  const rejected = ref<RejectedFile[]>([])
+
   const maxIndex = computed(() => Math.max(0, imageIds.value.length - 1))
 
   const problemText = computed(() => {
@@ -60,19 +76,51 @@ export function useViewerStudy() {
     return 'key' in value ? t(value.key, value.params) : value.message
   })
 
+  /** Both file and archive sources report what they left behind the same way. */
+  function withSkipped(summary: string, skipped: number): string {
+    if (!skipped) return summary
+    return summary + t('list.separator') + t('app.count.skipped', { count: skipped })
+  }
+
   const sourceLabel = computed(() => {
     const value = source.value
     if (!value) return ''
     if (value.kind === 'samples') return t('app.source.samples', { count: value.count })
-    if (value.kind === 'files') return t('app.source.files', { count: value.count })
+    if (value.kind === 'files') {
+      return withSkipped(t('app.source.files', { count: value.count }), value.skipped)
+    }
 
-    const summary = t('app.source.zip', {
-      file: value.file,
-      images: t('app.count.images', { count: value.images }),
-      series: t('app.count.series', { count: value.series }),
-    })
-    if (!value.skipped) return summary
-    return summary + t('list.separator') + t('app.count.skipped', { count: value.skipped })
+    return withSkipped(
+      t('app.source.zip', {
+        file: value.file,
+        images: t('app.count.images', { count: value.images }),
+        series: t('app.count.series', { count: value.series }),
+      }),
+      value.skipped,
+    )
+  })
+
+  /**
+   * The guard's verdict in one line. A few files are named with their reason;
+   * beyond that the names stop being useful and only the tally is kept.
+   */
+  const rejectedText = computed(() => {
+    const list = rejected.value
+    if (!list.length) return null
+
+    const named = list
+      .slice(0, MAX_NAMED_REJECTS)
+      .map(entry => t('app.skipped.entry', {
+        name: entry.name,
+        reason: t(SKIP_REASON_KEY[entry.reason]),
+      }))
+      .join(t('list.separator'))
+
+    const count = t('app.count.skipped', { count: list.length })
+    const rest = list.length - Math.min(list.length, MAX_NAMED_REJECTS)
+    return rest > 0
+      ? t('app.skipped.more', { count, named, rest })
+      : t('app.skipped.summary', { count, named })
   })
 
   const progressLabel = computed(() => {
@@ -121,12 +169,23 @@ export function useViewerStudy() {
 
     busy.value = true
     problem.value = null
+    rejected.value = []
     try {
-      const ids = await addFiles(list)
+      const guard = await guardDicomFiles(list)
+      rejected.value = guard.rejected
+
+      // Nothing survived: say so rather than clearing the viewport, so a
+      // mis-picked folder does not look like a viewer that broke.
+      if (!guard.accepted.length) {
+        problem.value = { key: 'app.error.noDicomFiles', params: { count: list.length } }
+        return
+      }
+
+      const ids = await addFiles(guard.accepted)
       resetSeries()
       imageIndex.value = 0
       imageIds.value = ids
-      source.value = { kind: 'files', count: ids.length }
+      source.value = { kind: 'files', count: ids.length, skipped: guard.rejected.length }
     }
     catch (caught) {
       problem.value = { message: caught instanceof Error ? caught.message : String(caught) }
@@ -140,6 +199,9 @@ export function useViewerStudy() {
     busy.value = true
     problem.value = null
     progress.value = null
+    // The archive reports what it skipped through `source`, so the guard's
+    // notice from a previous open must not linger next to it.
+    rejected.value = []
     try {
       const result = await addZip(file, {
         onProgress: value => (progress.value = value),
@@ -191,13 +253,14 @@ export function useViewerStudy() {
   }
 
   /**
-   * Files that arrived together, from a drop rather than a picker.
+   * One way in for everything the user hands over, whether picked from the
+   * dialog or dropped on the stage.
    *
-   * A dropped archive is unpacked; anything else goes through the plain file
-   * path. Dropping a ZIP alongside loose files is ambiguous, so the archive
-   * wins and the rest is ignored.
+   * An archive is unpacked; anything else goes through the plain file path,
+   * where the guard vets it. Choosing a ZIP alongside loose files is
+   * ambiguous, so the archive wins and the rest is ignored.
    */
-  function openDropped(files: File[]) {
+  function openAny(files: File[]) {
     if (!files.length) return
     const archive = files.find(isZip)
     if (archive) openZip(archive)
@@ -225,6 +288,7 @@ export function useViewerStudy() {
     imageIds.value = []
     imageIndex.value = 0
     source.value = null
+    rejected.value = []
     resetSeries()
     await purge()
   }
@@ -243,10 +307,9 @@ export function useViewerStudy() {
     progressLabel,
     progressValue,
     sourceLabel,
+    rejectedText,
     loadSamples,
-    open,
-    openZip,
-    openDropped,
+    openAny,
     selectSeries,
     step,
     stepSeries,

@@ -13,6 +13,7 @@ const {
   progressLabel,
   progressValue,
   problemText,
+  rejectedText,
   sourceLabel,
   busy,
 } = study
@@ -59,8 +60,7 @@ onMounted(() => {
       :busy="busy"
       :has-images="imageIds.length > 0"
       @load-samples="study.loadSamples"
-      @open-files="study.open"
-      @open-zip="study.openZip"
+      @open="study.openAny"
       @clear="study.clear"
       @show-help="helpVisible = true"
     />
@@ -78,6 +78,16 @@ onMounted(() => {
       class="m-0 rounded-none"
     >
       {{ problemText }}
+    </Message>
+
+    <!-- What the guard turned away. Not a problem: the rest still loaded. -->
+    <Message
+      v-if="rejectedText"
+      severity="info"
+      :closable="false"
+      class="m-0 rounded-none"
+    >
+      {{ rejectedText }}
     </Message>
 
     <div class="flex min-h-0 flex-1">
@@ -100,7 +110,7 @@ onMounted(() => {
         :image-index="imageIndex"
         @ready="viewport = $event"
         @update:image-index="imageIndex = $event"
-        @drop-files="study.openDropped"
+        @drop-files="study.openAny"
       />
     </div>
 
