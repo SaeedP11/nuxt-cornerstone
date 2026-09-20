@@ -13,6 +13,15 @@ const { t, isRtl } = useCornerstoneI18n()
 // The tooltip hangs off the side the rail is not on, which swaps with the
 // reading direction along with the rail itself.
 const tooltipSide = computed(() => (isRtl.value ? 'left' : 'right'))
+
+/**
+ * The tooltip is where a shortcut is discovered, so it carries the key. The
+ * key itself is a Latin character on the keyboard rather than prose, so it is
+ * not translated.
+ */
+function tooltipFor(tool: ToolSpec): string {
+  return `${t(tool.key)} (${tool.shortcut.toUpperCase()})`
+}
 </script>
 
 <template>
@@ -23,7 +32,7 @@ const tooltipSide = computed(() => (isRtl.value ? 'left' : 'right'))
     <Button
       v-for="tool in TOOLS"
       :key="tool.className"
-      v-tooltip="{ value: t(tool.key), position: tooltipSide }"
+      v-tooltip="{ value: tooltipFor(tool), position: tooltipSide }"
       :icon="tool.icon"
       :severity="tool.className === activeTool ? 'primary' : 'secondary'"
       :text="tool.className !== activeTool"
@@ -39,7 +48,7 @@ const tooltipSide = computed(() => (isRtl.value ? 'left' : 'right'))
     <Divider class="my-1!" />
 
     <Button
-      v-tooltip="{ value: t('app.resetCamera'), position: tooltipSide }"
+      v-tooltip="{ value: `${t('app.resetCamera')} (Space)`, position: tooltipSide }"
       icon="pi pi-refresh"
       severity="secondary"
       text

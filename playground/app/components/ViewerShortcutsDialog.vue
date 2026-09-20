@@ -4,17 +4,16 @@ const visible = defineModel<boolean>('visible', { required: true })
 const { t } = useCornerstoneI18n()
 
 /**
- * Key names are identifiers on the keyboard, so they are not translated and
- * the column stays LTR. Each horizontal pair is listed as a pair rather than
- * as "left = back", because which arrow goes forward follows the reading
- * direction.
+ * The OHIF viewer's default keymap, which is what anyone arriving from a PACS
+ * will try first. Key names are identifiers on the keyboard, so they are not
+ * translated and the column stays LTR.
  */
 const BINDINGS = [
-  { keys: ['↑', '↓', '←', '→'], key: 'app.shortcuts.slice' },
-  { keys: ['Page Up', 'Page Down'], key: 'app.shortcuts.page' },
+  { keys: ['↑', '↓'], key: 'app.shortcuts.slice' },
+  { keys: ['Page Up', 'Page Down'], key: 'app.shortcuts.series' },
   { keys: ['Home', 'End'], key: 'app.shortcuts.ends' },
-  { keys: ['1 – 7'], key: 'app.shortcuts.tools' },
-  { keys: ['R'], key: 'app.shortcuts.reset' },
+  { keys: ['Space'], key: 'app.shortcuts.reset' },
+  { keys: TOOLS.map(tool => tool.shortcut.toUpperCase()), key: 'app.shortcuts.tools' },
   { keys: ['?'], key: 'app.shortcuts.help' },
 ]
 </script>

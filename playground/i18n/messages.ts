@@ -36,13 +36,11 @@ export const en: MessageCatalog = {
   'app.tool.probe': 'Probe',
 
   'app.shortcuts.title': 'Keyboard shortcuts',
-  // The horizontal arrows follow the reading direction, so the help lists the
-  // pair rather than claiming which one goes forward.
   'app.shortcuts.slice': 'Previous / next image',
-  'app.shortcuts.page': 'Jump ten images',
+  'app.shortcuts.series': 'Previous / next series',
   'app.shortcuts.ends': 'First / last image',
-  'app.shortcuts.tools': 'Pick the tool at that position on the rail',
-  'app.shortcuts.reset': 'Reset the camera',
+  'app.shortcuts.tools': 'Pick a tool — each button on the rail shows its key',
+  'app.shortcuts.reset': 'Reset the viewport',
   'app.shortcuts.help': 'Open this list',
 
   'app.progress.reading': 'Reading archive…',
@@ -95,10 +93,10 @@ export const fa: MessageCatalog = {
 
   'app.shortcuts.title': 'میان‌برهای صفحه‌کلید',
   'app.shortcuts.slice': 'تصویر قبلی / بعدی',
-  'app.shortcuts.page': 'پرش ده تصویر',
+  'app.shortcuts.series': 'سری قبلی / بعدی',
   'app.shortcuts.ends': 'نخستین / آخرین تصویر',
-  'app.shortcuts.tools': 'انتخاب ابزار بر اساس جایگاه آن در نوار',
-  'app.shortcuts.reset': 'بازنشانی دوربین',
+  'app.shortcuts.tools': 'انتخاب ابزار — کلید هر ابزار روی دکمهٔ آن در نوار نوشته شده است',
+  'app.shortcuts.reset': 'بازنشانی نمای تصویر',
   'app.shortcuts.help': 'باز کردن همین فهرست',
 
   'app.progress.reading': 'در حال خواندن بایگانی…',

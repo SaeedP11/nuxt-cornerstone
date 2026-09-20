@@ -1,22 +1,19 @@
 export interface ViewerShortcutHandlers {
   /** False while nothing is loaded, so the keys stay inert on an empty demo. */
   isEnabled: () => boolean
-  /** Reading direction, for mapping the horizontal arrows. */
-  isRtl: () => boolean
+  /** Move through the stack, positive forwards. */
   step: (delta: number) => void
   first: () => void
   last: () => void
-  /** Zero-based position in `TOOLS`. */
-  selectToolAt: (position: number) => void
-  resetCamera: () => void
+  /** Move through the archive's series, positive forwards. */
+  stepSeries: (delta: number) => void
+  setTool: (className: string) => void
+  resetViewport: () => void
   toggleHelp: () => void
 }
 
-/** How far PageUp/PageDown move through a stack. */
-const PAGE = 10
-
 /**
- * A typing target. PrimeVue's Select and SelectButton are focusable and drive
+ * A typing target. PrimeVue's Listbox and SelectButton are focusable and drive
  * themselves with the arrow keys, so a viewer shortcut must not also fire while
  * one of them has focus.
  */
@@ -27,12 +24,22 @@ function isTyping(target: EventTarget | null): boolean {
 }
 
 /**
- * Keyboard control for the viewer.
+ * Something Space or Enter already activates. Stealing Space from a focused
+ * button would make the rail unusable from the keyboard.
+ */
+function isActivatable(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  return target.closest('button, a, [role="button"], [role="option"]') !== null
+}
+
+/**
+ * Keyboard control for the viewer, following the OHIF viewer's default keymap
+ * — the closest thing this corner of the world has to a standard, and the one
+ * anyone arriving from a PACS will try first.
  *
- * Vertical arrows and the page keys are direction-neutral and mean the same
- * thing in every locale. The horizontal pair is not: in Farsi the chrome reads
- * right to left, so `ArrowRight` has to mean *backwards* or it disagrees with
- * the direction the rest of the page runs in.
+ * The horizontal arrows are deliberately unbound: OHIF gives them to moving
+ * between viewports, and this demo has one. That also sidesteps the question
+ * of which arrow means "forward" when the chrome is right-to-left.
  */
 export function useViewerShortcuts(handlers: ViewerShortcutHandlers) {
   function onKeydown(event: KeyboardEvent) {
@@ -50,23 +57,18 @@ export function useViewerShortcuts(handlers: ViewerShortcutHandlers) {
 
     if (!handlers.isEnabled()) return
 
-    const forward = handlers.isRtl() ? 'ArrowLeft' : 'ArrowRight'
-    const back = handlers.isRtl() ? 'ArrowRight' : 'ArrowLeft'
-
     switch (event.key) {
       case 'ArrowDown':
-      case forward:
         handlers.step(1)
         break
       case 'ArrowUp':
-      case back:
         handlers.step(-1)
         break
       case 'PageDown':
-        handlers.step(PAGE)
+        handlers.stepSeries(1)
         break
       case 'PageUp':
-        handlers.step(-PAGE)
+        handlers.stepSeries(-1)
         break
       case 'Home':
         handlers.first()
@@ -74,15 +76,14 @@ export function useViewerShortcuts(handlers: ViewerShortcutHandlers) {
       case 'End':
         handlers.last()
         break
-      case 'r':
-      case 'R':
-        handlers.resetCamera()
+      case ' ':
+        if (isActivatable(event.target)) return
+        handlers.resetViewport()
         break
       default: {
-        // '1'..'7' pick a tool by its position on the rail.
-        const position = Number(event.key)
-        if (!Number.isInteger(position) || position < 1 || position > TOOLS.length) return
-        handlers.selectToolAt(position - 1)
+        const tool = TOOLS.find(entry => entry.shortcut === event.key.toLowerCase())
+        if (!tool) return
+        handlers.setTool(tool.className)
       }
     }
 

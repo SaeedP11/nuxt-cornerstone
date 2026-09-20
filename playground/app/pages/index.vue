@@ -18,7 +18,6 @@ const {
 } = study
 
 const tools = useCornerstoneTools()
-const { isRtl } = useCornerstoneI18n()
 
 const activeTool = ref('WindowLevelTool')
 const viewport = shallowRef<CoreTypes.IStackViewport | null>(null)
@@ -36,19 +35,20 @@ function resetCamera() {
 
 useViewerShortcuts({
   isEnabled: () => imageIds.value.length > 0,
-  isRtl: () => isRtl.value,
   step: study.step,
   first: () => (imageIndex.value = 0),
   last: () => (imageIndex.value = maxIndex.value),
-  selectToolAt: position => selectTool(TOOLS[position]!.className),
-  resetCamera,
+  stepSeries: study.stepSeries,
+  setTool: selectTool,
+  resetViewport: resetCamera,
   toggleHelp: () => (helpVisible.value = !helpVisible.value),
 })
 
 // /?samples loads the bundled stack straight away, which makes the demo
-// linkable and lets a headless browser drive it.
+// linkable and lets a headless browser drive it. Development-only for the
+// same reason as the button: a build does not carry the samples.
 onMounted(() => {
-  if (useRoute().query.samples !== undefined) study.loadSamples()
+  if (import.meta.dev && useRoute().query.samples !== undefined) study.loadSamples()
 })
 </script>
 

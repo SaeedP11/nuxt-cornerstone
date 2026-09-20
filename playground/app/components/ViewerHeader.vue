@@ -59,13 +59,24 @@ function onPickZip(event: { files: File | File[] }) {
       :aria-label="t('app.language')"
     />
 
-    <Button
-      :label="t('app.loadSamples')"
-      icon="pi pi-images"
-      size="small"
-      :loading="busy"
-      @click="emit('loadSamples')"
-    />
+    <!--
+      The bundled samples are downloaded by `pnpm samples` and are gitignored,
+      so a build does not carry them and the button would only ever report that
+      it could not find them.
+
+      <DevOnly> rather than `v-if`: a v-if on a build-time constant still ships
+      the button's render code and its label, and only declines to draw it.
+      This removes it from the bundle.
+    -->
+    <DevOnly>
+      <Button
+        :label="t('app.loadSamples')"
+        icon="pi pi-images"
+        size="small"
+        :loading="busy"
+        @click="emit('loadSamples')"
+      />
+    </DevOnly>
 
     <!--
       No `accept`: FileUpload turns it into a validation rule, and plenty of

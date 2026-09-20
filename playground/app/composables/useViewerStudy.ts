@@ -90,6 +90,11 @@ export function useViewerStudy() {
     return Math.round((value.done / value.total) * 100)
   })
 
+  /**
+   * The bundled stack. `pnpm samples` downloads it and it is gitignored, so it
+   * exists in a checkout and not in a build — which is why the button that
+   * calls this is development-only.
+   */
   async function loadSamples() {
     busy.value = true
     problem.value = null
@@ -205,6 +210,17 @@ export function useViewerStudy() {
     imageIndex.value = Math.min(maxIndex.value, Math.max(0, imageIndex.value + delta))
   }
 
+  /** Move `delta` series through the archive, stopping at either end. */
+  function stepSeries(delta: number) {
+    if (series.value.length < 2) return
+    const current = series.value.findIndex(
+      entry => entry.seriesInstanceUid === activeSeriesUid.value,
+    )
+    const next = Math.min(series.value.length - 1, Math.max(0, current + delta))
+    if (next === current) return
+    selectSeries(series.value[next]!.seriesInstanceUid)
+  }
+
   async function clear() {
     imageIds.value = []
     imageIndex.value = 0
@@ -233,6 +249,7 @@ export function useViewerStudy() {
     openDropped,
     selectSeries,
     step,
+    stepSeries,
     clear,
   }
 }
