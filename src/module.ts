@@ -49,7 +49,7 @@ export type {
 } from './runtime/composables/useDicomAnnotations'
 
 
-const MODULE_NAME = 'nuxt-cornerstone3d'
+const MODULE_NAME = 'nuxt-cornerstone'
 
 /**
  * Peer dependencies. `@cornerstonejs/metadata` and `@cornerstonejs/utils` were

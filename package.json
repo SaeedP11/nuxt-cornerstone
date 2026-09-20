@@ -1,5 +1,5 @@
 {
-  "name": "nuxt-cornerstone3d",
+  "name": "nuxt-cornerstone",
   "version": "0.1.0",
   "description": "Cornerstone3D medical imaging for Nuxt 4 — DICOM stack viewport, tools and loaders, with the Vite/worker/WASM wiring done for you.",
   "license": "MIT",

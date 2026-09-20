@@ -35,7 +35,7 @@ function onPick(event: { files: File | File[] }) {
     <span
       dir="ltr"
       class="font-semibold"
-    >nuxt-cornerstone3d</span>
+    >nuxt-cornerstone</span>
     <Tag
       :value="ready ? t('app.ready') : t('app.initialising')"
       :severity="ready ? 'success' : 'secondary'"

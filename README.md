@@ -1,4 +1,4 @@
-# nuxt-cornerstone3d
+# nuxt-cornerstone
 
 [Cornerstone3D](https://www.cornerstonejs.org/) for Nuxt 4 — a DICOM stack viewport, tool groups
 and loaders, with the build configuration Cornerstone needs already done.
@@ -17,7 +17,7 @@ Two copies of `@cornerstonejs/core` in a dependency tree means two image caches 
 targets, and it fails in ways that are hard to trace.
 
 ```bash
-pnpm add nuxt-cornerstone3d
+pnpm add nuxt-cornerstone
 pnpm add @cornerstonejs/core @cornerstonejs/tools @cornerstonejs/dicom-image-loader \
          @cornerstonejs/metadata @cornerstonejs/utils dicom-parser
 ```
@@ -36,7 +36,7 @@ has to scan this package — Tailwind skips `node_modules` unless a source is na
 ```css
 /* assets/css/main.css */
 @import "tailwindcss";
-@source "../../node_modules/nuxt-cornerstone3d/dist";
+@source "../../node_modules/nuxt-cornerstone/dist";
 ```
 
 Without that line the viewport element is laid out at its intrinsic size, which is zero height, and
@@ -47,7 +47,7 @@ equivalent rules yourself: `position: relative`, `width: 100%`, `height: 100%`,
 ```ts
 // nuxt.config.ts
 export default defineNuxtConfig({
-  modules: ['nuxt-cornerstone3d'],
+  modules: ['nuxt-cornerstone'],
 })
 ```
 
@@ -138,7 +138,7 @@ addMessages, setTranslator }`. Locale and translation for the strings this modul
 
 ```vue
 <script setup lang="ts">
-import type { DicomSeries } from 'nuxt-cornerstone3d'
+import type { DicomSeries } from 'nuxt-cornerstone'
 
 const { addZip } = useDicomFiles()
 const series = shallowRef<DicomSeries[]>([])
@@ -276,7 +276,7 @@ were loaded when they were added, so clear them when the stack changes.
 
 ```ts
 export default defineNuxtConfig({
-  modules: ['nuxt-cornerstone3d'],
+  modules: ['nuxt-cornerstone'],
   cornerstone: {
     autoInit: true,
     core: {},                        // -> coreInit(config)

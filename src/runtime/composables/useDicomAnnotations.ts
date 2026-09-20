@@ -106,7 +106,7 @@ export function useDicomAnnotations(
 
   function requireViewport(): StackViewport {
     const viewport = toValue(source)
-    if (!viewport) throw new Error(`[nuxt-cornerstone3d] ${t('error.annotationViewport')}`)
+    if (!viewport) throw new Error(`[nuxt-cornerstone] ${t('error.annotationViewport')}`)
     return viewport
   }
 
@@ -127,13 +127,13 @@ export function useDicomAnnotations(
       viewport.renderingEngineId,
     )
     if (!group) {
-      throw new Error(`[nuxt-cornerstone3d] ${t('error.annotationToolGroup')}`)
+      throw new Error(`[nuxt-cornerstone] ${t('error.annotationToolGroup')}`)
     }
 
     if (!group.hasTool(OVERLAY_TOOL_NAME)) {
       const ParentTool = resolveToolClass(tools, PARENT_TOOL_CLASS)
       if (!ParentTool) {
-        throw new Error(`[nuxt-cornerstone3d] ${t('error.annotationTool')}`)
+        throw new Error(`[nuxt-cornerstone] ${t('error.annotationTool')}`)
       }
 
       // The parent has to be in the global registry before an instance of it

@@ -81,7 +81,7 @@ export function configureCornerstone(options: CornerstoneModuleOptions | undefin
 /** Merge extra options in before init. Throws once init has started. */
 export function setCornerstoneOptions(options: CornerstoneModuleOptions): void {
   if (state.libsPromise) {
-    throw new Error(`[nuxt-cornerstone3d] ${t('error.optionsLocked')}`)
+    throw new Error(`[nuxt-cornerstone] ${t('error.optionsLocked')}`)
   }
   configureCornerstone(options)
 }
@@ -100,7 +100,7 @@ export function getCornerstoneOptions(): ResolvedCornerstoneOptions {
 export function ensureCornerstone(options?: CornerstoneModuleOptions): Promise<CornerstoneLibs> {
   if (import.meta.server) {
     return Promise.reject(
-      new Error(`[nuxt-cornerstone3d] ${t('error.ssr')}`),
+      new Error(`[nuxt-cornerstone] ${t('error.ssr')}`),
     )
   }
   if (options) setCornerstoneOptions(options)
@@ -147,7 +147,7 @@ function registerTools(tools: CornerstoneTools, names: CornerstoneToolClassName[
     if (registered.has(name)) continue
     const ToolClass = (tools as unknown as Record<string, unknown>)[name]
     if (typeof ToolClass !== 'function') {
-      console.warn(`[nuxt-cornerstone3d] ${t('warn.unknownTool', { tool: name })}`)
+      console.warn(`[nuxt-cornerstone] ${t('warn.unknownTool', { tool: name })}`)
       continue
     }
     try {

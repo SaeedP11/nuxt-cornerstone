@@ -13,7 +13,7 @@ import type { CornerstoneModuleOptions } from './types'
  * the client plugin alone produces a first paint in English that then flips.
  */
 export default defineNuxtPlugin({
-  name: 'nuxt-cornerstone3d:i18n',
+  name: 'nuxt-cornerstone:i18n',
   enforce: 'pre',
   setup(nuxtApp) {
     const options = useRuntimeConfig().public.cornerstone as CornerstoneModuleOptions | undefined

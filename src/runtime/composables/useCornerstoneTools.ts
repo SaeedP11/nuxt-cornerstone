@@ -31,7 +31,7 @@ export function useCornerstoneTools(toolGroupId?: string) {
 
     const group = tools.ToolGroupManager.createToolGroup(groupId)
     if (!group) {
-      throw new Error(`[nuxt-cornerstone3d] ${t('error.toolGroupCreate', { groupId })}`)
+      throw new Error(`[nuxt-cornerstone] ${t('error.toolGroupCreate', { groupId })}`)
     }
 
     const registered = getCornerstoneOptions().tools.register
@@ -83,7 +83,7 @@ export function useCornerstoneTools(toolGroupId?: string) {
 
     if (!group.hasTool(toolName)) {
       throw new Error(
-        `[nuxt-cornerstone3d] ${t('error.toolNotInGroup', { tool: toolName, groupId })}`,
+        `[nuxt-cornerstone] ${t('error.toolNotInGroup', { tool: toolName, groupId })}`,
       )
     }
 

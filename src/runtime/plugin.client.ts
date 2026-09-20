@@ -9,7 +9,7 @@ import {
 import type { CornerstoneLibs, CornerstoneModuleOptions } from './types'
 
 export default defineNuxtPlugin({
-  name: 'nuxt-cornerstone3d',
+  name: 'nuxt-cornerstone',
   enforce: 'pre',
   setup() {
     const options = useRuntimeConfig().public.cornerstone as CornerstoneModuleOptions | undefined
@@ -23,7 +23,7 @@ export default defineNuxtPlugin({
       // capability probe, and nothing in the app should wait on it. Consumers
       // await ensureCornerstone() at the point they actually need it.
       ensureCornerstone().catch((error) => {
-        console.error(`[nuxt-cornerstone3d] ${t('error.initFailed')}`, error)
+        console.error(`[nuxt-cornerstone] ${t('error.initFailed')}`, error)
       })
     }
 
