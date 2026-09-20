@@ -118,11 +118,72 @@ All are auto-imported.
 initialisation; `ensure()` resolves with `{ core, tools, dicomImageLoader }`. Initialisation is
 shared, so calling this from ten components still initialises once.
 
-**`useDicomFiles()`** → `{ addFiles, toImageId, purge }`. `addFiles(files)` registers local `File`s
-and returns `dicomfile:` imageIds sorted by **InstanceNumber** — read from tag (0020,0013) with
-`dicom-parser`, stopping at that tag, and falling back to a numeric-aware filename sort for files
-that do not carry it. Pass `{ sort: 'name' }` or `{ sort: false }` to change that.
-`toImageId(url)` builds a `wadouri:` id for a Part 10 file served over HTTP.
+**`useDicomFiles()`** → `{ addFiles, addZip, toImageId, purge }`. `addFiles(files)` registers local
+`File`s and returns `dicomfile:` imageIds sorted by **InstanceNumber** — read from tag (0020,0013)
+with `dicom-parser`, stopping at that tag, and falling back to a numeric-aware filename sort for
+files that do not carry it. Pass `{ sort: 'name' }` or `{ sort: false }` to change that.
+`toImageId(url)` builds a `wadouri:` id for a Part 10 file served over HTTP. `addZip(file)` unpacks
+a ZIP archive — see below.
+
+### ZIP archives
+
+`addZip()` takes a `File`, `Blob`, `ArrayBuffer` or `Uint8Array` and returns the images inside it,
+**split into series**:
+
+```vue
+<script setup lang="ts">
+import type { DicomSeries } from 'nuxt-cornerstone3d'
+
+const { addZip } = useDicomFiles()
+const series = shallowRef<DicomSeries[]>([])
+const imageIds = ref<string[]>([])
+
+async function open(file: File) {
+  const result = await addZip(file, {
+    onProgress: ({ phase, done, total }) => console.log(phase, done, '/', total),
+  })
+  series.value = result.series
+  imageIds.value = result.series[0]?.imageIds ?? []
+}
+</script>
+```
+
+Each `DicomSeries` carries `seriesInstanceUid`, `seriesNumber`, `description`, `modality`, a
+ready-made `label` and its own sorted `imageIds`. Series come back ordered by SeriesNumber. The
+result also has a flat `imageIds` across every series, and `skipped`, listing the archive members
+that were not loaded and why.
+
+Splitting by SeriesInstanceUID (0020,000E) is the default because a study ZIP normally holds
+several series, and stacking a sagittal T1 on top of an axial T2 is not a stack. Files whose header
+does not give a SeriesInstanceUID fall back to grouping by their folder inside the archive, which is
+how burned CDs lay series out anyway. Pass `{ groupBy: false }` for a single group holding
+everything.
+
+Archive members are filtered twice. Before anything is inflated, entries are dropped by name and
+declared size — directories, `__MACOSX/`, dotfiles, `DICOMDIR`, `Thumbs.db`, and extensions that are
+never DICOM (`.pdf`, `.jpg`, `.txt` and friends). There is no allowlist in the other direction,
+because plenty of DICOM files are named `IM000001` or `I10`. What survives is then judged on its
+bytes: if any member carries the Part 10 `DICM` magic at offset 128, the members that do not are
+dropped as well. An archive of preamble-less datasets has no such positive signal, so nothing is
+narrowed and every member is kept.
+
+| Option | Default | |
+| --- | --- | --- |
+| `groupBy` | `'series'` | `false` returns one group |
+| `sort` | `'instanceNumber'` | as `addFiles`; applies within each series |
+| `maxBytes` | `2 GiB` | ceiling on total *uncompressed* bytes |
+| `onProgress` | — | `{ phase, done, total }` |
+
+`maxBytes` is checked against the sizes the archive's central directory declares, so a 100 KB file
+claiming to expand to 40 GB is rejected without allocating for it.
+
+`onProgress` reports three phases. `'reading'` and `'extracting'` have nothing to count — fflate
+reports nothing until inflation finishes — so show an indeterminate bar for those; `'indexing'`
+counts DICOM headers and fills in `done`/`total`. Indexing yields to the event loop every 32 files,
+so a large study does not freeze the page while it is read.
+
+Decompression uses [`fflate`](https://github.com/101arrowz/fflate), imported dynamically: an app
+that never opens an archive never loads it.
 
 **`useCornerstoneTools(toolGroupId?)`** → `{ ensureGroup, addViewport, removeViewport, setActive,
 setPassive, setEnabled, setDisabled, getActiveTool, destroy }`. Takes either a class name
@@ -185,7 +246,7 @@ On the client build only:
   request goes to a path that does not exist, the SPA fallback answers with `index.html`, and you
   get `CompileError: WebAssembly.instantiate(): expected magic word 00 61 73 6d, found 3c 21 64 6f`
   — `3c 21 64 6f` is `<!do`.
-- **`optimizeDeps.include`** for `dicom-parser` (CommonJS), `@cornerstonejs/core`,
+- **`optimizeDeps.include`** for `dicom-parser` (CommonJS), `fflate`, `@cornerstonejs/core`,
   `@cornerstonejs/tools`, `@cornerstonejs/metadata` and `@cornerstonejs/utils`. Two reasons. Vite
   would discover core and tools on the first dynamic import anyway, but discovering them *while the
   browser is importing them* re-bundles, changes the dep hash and invalidates the in-flight URLs, so
@@ -193,7 +254,10 @@ On the client build only:
   full reload. And `metadata`/`utils` are singletons holding the metadata provider registry: reached
   only transitively, the optimizer inlines one copy into core's chunk while the excluded image loader
   resolves a second raw copy, the two stop sharing a registry, and every `wadouri` load fails with
-  `no pixel data in NATURALIZED`. Naming them makes them shared chunks.
+  `no pixel data in NATURALIZED`. Naming them makes them shared chunks. `fflate` is here for the
+  first reason too: it is imported dynamically the first time someone opens a ZIP, which is a click
+  rather than a page load, so discovering it only then would reload the page out from under the
+  archive the user just picked.
 - **`worker.format: 'es'`.** The loader spawns
   `new Worker(new URL('./decodeImageFrameWorker.js', import.meta.url), { type: 'module' })`.
 - **`assetsInclude: ['**/*.wasm']`.**

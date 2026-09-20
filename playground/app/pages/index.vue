@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Types as CoreTypes } from '@cornerstonejs/core'
+import type { DicomSeries, ZipProgress } from '../../../src/runtime/composables/useDicomFiles'
 
 interface SampleEntry {
   name: string
@@ -8,7 +9,7 @@ interface SampleEntry {
 }
 
 const { ready, error: initError } = useCornerstone()
-const { addFiles, toImageId, purge } = useDicomFiles()
+const { addFiles, addZip, toImageId, purge } = useDicomFiles()
 const tools = useCornerstoneTools()
 
 const imageIds = ref<string[]>([])
@@ -19,6 +20,12 @@ const loadError = ref<string | null>(null)
 const activeTool = ref('WindowLevelTool')
 const viewport = shallowRef<CoreTypes.IStackViewport | null>(null)
 const dragging = ref(false)
+
+// ZIP state. `series` stays empty for every other source, which is what the
+// series picker keys off.
+const series = shallowRef<DicomSeries[]>([])
+const activeSeriesUid = ref<string | null>(null)
+const progress = ref<ZipProgress | null>(null)
 
 const TOOLS = [
   { className: 'WindowLevelTool', label: 'Window/Level' },
@@ -32,12 +39,28 @@ const TOOLS = [
 
 const maxIndex = computed(() => Math.max(0, imageIds.value.length - 1))
 
+const progressLabel = computed(() => {
+  const value = progress.value
+  if (!value) return ''
+  if (value.phase === 'reading') return 'Reading archive…'
+  if (value.phase === 'extracting') return 'Extracting…'
+  return `Reading headers ${value.done} / ${value.total}`
+})
+
+/** Indeterminate until there is something countable to count. */
+const progressValue = computed(() => {
+  const value = progress.value
+  if (!value || value.phase !== 'indexing' || value.total === 0) return null
+  return Math.round((value.done / value.total) * 100)
+})
+
 async function loadSamples() {
   busy.value = true
   loadError.value = null
   try {
     const manifest = await $fetch<SampleEntry[]>('/samples/manifest.json')
     if (!manifest.length) throw new Error('manifest is empty')
+    resetSeries()
     imageIndex.value = 0
     imageIds.value = manifest.map(entry => toImageId(`/samples/${entry.name}`))
     source.value = `${manifest.length} bundled samples (one CT slice per transfer syntax)`
@@ -60,6 +83,7 @@ async function open(files: File[] | FileList | null) {
   loadError.value = null
   try {
     const ids = await addFiles(list)
+    resetSeries()
     imageIndex.value = 0
     imageIds.value = ids
     source.value = `${ids.length} local file${ids.length === 1 ? '' : 's'}, sorted by InstanceNumber`
@@ -72,6 +96,54 @@ async function open(files: File[] | FileList | null) {
   }
 }
 
+async function openZip(file: File) {
+  busy.value = true
+  loadError.value = null
+  progress.value = null
+  try {
+    const result = await addZip(file, {
+      onProgress: value => (progress.value = value),
+    })
+
+    if (!result.series.length) {
+      resetSeries()
+      imageIds.value = []
+      loadError.value = `No DICOM images found in ${file.name}.`
+      return
+    }
+
+    series.value = result.series
+    selectSeries(result.series[0]!.seriesInstanceUid)
+
+    const total = result.imageIds.length
+    const count = result.series.length
+    source.value
+      = `${file.name} — ${total} image${total === 1 ? '' : 's'} in `
+        + `${count} series${count === 1 ? '' : 'es'}`
+        + (result.skipped.length ? `, ${result.skipped.length} file(s) skipped` : '')
+  }
+  catch (caught) {
+    loadError.value = caught instanceof Error ? caught.message : String(caught)
+  }
+  finally {
+    busy.value = false
+    progress.value = null
+  }
+}
+
+function selectSeries(uid: string | null) {
+  const chosen = series.value.find(entry => entry.seriesInstanceUid === uid)
+  if (!chosen) return
+  activeSeriesUid.value = chosen.seriesInstanceUid
+  imageIndex.value = 0
+  imageIds.value = chosen.imageIds
+}
+
+function resetSeries() {
+  series.value = []
+  activeSeriesUid.value = null
+}
+
 // FileUpload in basic mode with `custom-upload` hands the chosen files straight
 // to us instead of posting them anywhere; it clears its own input afterwards,
 // so the same files can be picked again.
@@ -79,15 +151,33 @@ function onPick(event: { files: File | File[] }) {
   open(Array.isArray(event.files) ? event.files : [event.files])
 }
 
+function onPickZip(event: { files: File | File[] }) {
+  const file = Array.isArray(event.files) ? event.files[0] : event.files
+  if (file) openZip(file)
+}
+
+function isZip(file: File): boolean {
+  return /\.zip$/i.test(file.name) || /zip/.test(file.type)
+}
+
 function onDrop(event: DragEvent) {
   dragging.value = false
-  open(event.dataTransfer?.files ?? null)
+  const dropped = Array.from(event.dataTransfer?.files ?? [])
+  if (!dropped.length) return
+
+  // A dropped archive is unpacked; anything else goes through the plain file
+  // path. Dropping a ZIP alongside loose files is ambiguous, so the archive
+  // wins and the rest is ignored.
+  const archive = dropped.find(isZip)
+  if (archive) openZip(archive)
+  else open(dropped)
 }
 
 async function clear() {
   imageIds.value = []
   imageIndex.value = 0
   source.value = ''
+  resetSeries()
   await purge()
 }
 
@@ -142,6 +232,18 @@ function resetCamera() {
         @uploader="onPick"
       />
 
+      <!-- An archive does have a reliable extension, so this one can filter. -->
+      <FileUpload
+        mode="basic"
+        custom-upload
+        auto
+        accept=".zip,application/zip,application/x-zip-compressed"
+        choose-label="Open ZIP…"
+        choose-icon="pi pi-file-import"
+        :choose-button-props="{ severity: 'secondary', size: 'small' }"
+        @uploader="onPickZip"
+      />
+
       <Button
         label="Clear"
         icon="pi pi-times"
@@ -151,6 +253,20 @@ function resetCamera() {
         @click="clear"
       />
     </header>
+
+    <div
+      v-if="progress"
+      class="flex items-center gap-3 border-b border-[var(--p-content-border-color)] bg-[var(--p-content-background)] px-4 py-2"
+    >
+      <ProgressBar
+        :mode="progressValue === null ? 'indeterminate' : 'determinate'"
+        :value="progressValue ?? 0"
+        class="h-2 flex-1"
+      />
+      <span class="w-56 text-right font-mono text-sm text-[var(--p-text-muted-color)]">
+        {{ progressLabel }}
+      </span>
+    </div>
 
     <Message
       v-if="initError || loadError"
@@ -173,6 +289,17 @@ function resetCamera() {
         :allow-empty="false"
         size="small"
         @update:model-value="selectTool"
+      />
+
+      <Select
+        v-if="series.length > 1"
+        :model-value="activeSeriesUid"
+        :options="series"
+        option-label="label"
+        option-value="seriesInstanceUid"
+        size="small"
+        class="w-72"
+        @update:model-value="selectSeries"
       />
 
       <div class="flex-1" />
@@ -207,7 +334,8 @@ function resetCamera() {
         v-else
         class="m-auto text-[var(--p-text-muted-color)]"
       >
-        Drop DICOM files here, open them from the toolbar, or load the bundled samples.
+        Drop DICOM files or a ZIP archive here, open them from the toolbar, or load the bundled
+        samples.
       </p>
     </main>
 

@@ -29,7 +29,7 @@ export default defineNuxtConfig({
       },
     },
     components: {
-      include: ['Button', 'FileUpload', 'Message', 'SelectButton', 'Slider', 'Tag'],
+      include: ['Button', 'FileUpload', 'Message', 'ProgressBar', 'Select', 'SelectButton', 'Slider', 'Tag'],
     },
   },
 

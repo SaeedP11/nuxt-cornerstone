@@ -35,7 +35,8 @@
   "dependencies": {
     "@nuxt/kit": "^4.5.2",
     "@originjs/vite-plugin-commonjs": "^1.0.3",
-    "defu": "^6.1.4"
+    "defu": "^6.1.4",
+    "fflate": "^0.8.3"
   },
   "peerDependencies": {
     "@cornerstonejs/core": "^5.10.7",

@@ -16,6 +16,16 @@ export type ModuleOptions = CornerstoneModuleOptions
 
 export type { CornerstoneModuleOptions, ResolvedCornerstoneOptions } from './runtime/types'
 
+export type {
+  AddFilesOptions,
+  AddZipOptions,
+  AddZipResult,
+  DicomSeries,
+  SkippedEntry,
+  SkipReason,
+  ZipProgress,
+} from './runtime/composables/useDicomFiles'
+
 
 const MODULE_NAME = 'nuxt-cornerstone3d'
 
@@ -126,9 +136,15 @@ export default defineNuxtModule<ModuleOptions>({
       //    chunks, which is what keeps them single instances.
       //
       // dicom-parser is CommonJS and also needs the conversion prebundling does.
+      //
+      // fflate is here for reason 1 as well. It is imported dynamically the
+      // first time someone opens a ZIP, which is a click rather than a page
+      // load — discovering it only then re-optimizes and forces a reload, out
+      // from under the archive the user has just picked.
       config.optimizeDeps.include = unique([
         ...(config.optimizeDeps.include ?? []),
         'dicom-parser',
+        'fflate',
         '@cornerstonejs/core',
         '@cornerstonejs/tools',
         '@cornerstonejs/metadata',
