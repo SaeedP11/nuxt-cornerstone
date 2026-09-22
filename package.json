@@ -54,11 +54,11 @@
     "dicom-parser": "^1.8.21"
   },
   "devDependencies": {
-    "@cornerstonejs/core": "5.10.7",
-    "@cornerstonejs/dicom-image-loader": "5.10.7",
-    "@cornerstonejs/metadata": "5.10.7",
-    "@cornerstonejs/tools": "5.10.7",
-    "@cornerstonejs/utils": "5.10.7",
+    "@cornerstonejs/core": "5.10.8",
+    "@cornerstonejs/dicom-image-loader": "5.10.8",
+    "@cornerstonejs/metadata": "5.10.8",
+    "@cornerstonejs/tools": "5.10.8",
+    "@cornerstonejs/utils": "5.10.8",
     "@nuxt/eslint-config": "^1.9.0",
     "@nuxt/module-builder": "^1.0.3",
     "@nuxt/schema": "^4.5.2",

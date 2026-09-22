@@ -22,20 +22,20 @@ importers:
         version: 0.8.3
     devDependencies:
       '@cornerstonejs/core':
-        specifier: 5.10.7
-        version: 5.10.7(@cornerstonejs/metadata@5.10.7)(@cornerstonejs/utils@5.10.7)(autoprefixer@10.6.1(postcss@8.5.28))(wslink@2.5.0)
+        specifier: 5.10.8
+        version: 5.10.8(@cornerstonejs/metadata@5.10.8)(@cornerstonejs/utils@5.10.8)(autoprefixer@10.6.1(postcss@8.5.28))(wslink@2.5.0)
       '@cornerstonejs/dicom-image-loader':
-        specifier: 5.10.7
-        version: 5.10.7(@cornerstonejs/core@5.10.7(@cornerstonejs/metadata@5.10.7)(@cornerstonejs/utils@5.10.7)(autoprefixer@10.6.1(postcss@8.5.28))(wslink@2.5.0))(@cornerstonejs/metadata@5.10.7)(dicom-parser@1.8.21)
+        specifier: 5.10.8
+        version: 5.10.8(@cornerstonejs/core@5.10.8(@cornerstonejs/metadata@5.10.8)(@cornerstonejs/utils@5.10.8)(autoprefixer@10.6.1(postcss@8.5.28))(wslink@2.5.0))(@cornerstonejs/metadata@5.10.8)(dicom-parser@1.8.21)
       '@cornerstonejs/metadata':
-        specifier: 5.10.7
-        version: 5.10.7
+        specifier: 5.10.8
+        version: 5.10.8
       '@cornerstonejs/tools':
-        specifier: 5.10.7
-        version: 5.10.7(@cornerstonejs/core@5.10.7(@cornerstonejs/metadata@5.10.7)(@cornerstonejs/utils@5.10.7)(autoprefixer@10.6.1(postcss@8.5.28))(wslink@2.5.0))(@kitware/vtk.js@36.4.1(autoprefixer@10.6.1(postcss@8.5.28))(wslink@2.5.0))(@types/d3-array@3.2.1)(@types/d3-interpolate@3.0.4)(d3-array@3.2.4)(d3-interpolate@3.0.1)(gl-matrix@3.4.4)
+        specifier: 5.10.8
+        version: 5.10.8(@cornerstonejs/core@5.10.8(@cornerstonejs/metadata@5.10.8)(@cornerstonejs/utils@5.10.8)(autoprefixer@10.6.1(postcss@8.5.28))(wslink@2.5.0))(@kitware/vtk.js@36.4.1(autoprefixer@10.6.1(postcss@8.5.28))(wslink@2.5.0))(@types/d3-array@3.2.1)(@types/d3-interpolate@3.0.4)(d3-array@3.2.4)(d3-interpolate@3.0.1)(gl-matrix@3.4.4)
       '@cornerstonejs/utils':
-        specifier: 5.10.7
-        version: 5.10.7
+        specifier: 5.10.8
+        version: 5.10.8
       '@nuxt/eslint-config':
         specifier: ^1.9.0
         version: 1.17.0(@typescript-eslint/utils@8.70.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(@vue/compiler-sfc@3.5.43)(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
@@ -263,26 +263,26 @@ packages:
     resolution: {integrity: sha512-iUGvF8r4SMHFrHGjwhNsTlHDPm+fIcGw3fUYm4vzhsf2J6VR9DqHtynXwUVOCBMSG9YTyWkcsD4db++0kMffMw==}
     engines: {node: '>=0.14'}
 
-  '@cornerstonejs/core@5.10.7':
-    resolution: {integrity: sha512-La3+ut9cK93NLA0JO2RX5KpLp/Sz9xfL7pyCd3QYTWRpvsoJI/KMe4EyyQW3AD5DSZ/U/UFRld6KXFLZywMWFQ==}
+  '@cornerstonejs/core@5.10.8':
+    resolution: {integrity: sha512-YayEFj3yw0FcI4pcYyO3NlGJSN3K6NFgrA+wYaE2SfSG98UZX4UX31hGTjBCRgD3+KA5b+/fgoMThwc2kbYNNw==}
     peerDependencies:
-      '@cornerstonejs/metadata': 5.10.7
-      '@cornerstonejs/utils': 5.10.7
+      '@cornerstonejs/metadata': 5.10.8
+      '@cornerstonejs/utils': 5.10.8
 
-  '@cornerstonejs/dicom-image-loader@5.10.7':
-    resolution: {integrity: sha512-E3YdrzO25ZqGow2Vl9h+F3ImH4FcRyxZ9Kgg98B9do3eJRp5IqbyM0opQJ8k6nW+wvkwM3+AfaDeBNagwKUAuw==}
+  '@cornerstonejs/dicom-image-loader@5.10.8':
+    resolution: {integrity: sha512-OBkaUv4YaNsk2hezl3XMrcKWs/QzL1HcS/3wzxe32j6FSRmTBO7QLrhUgH79R3nX+snBg9uJgr3QGR07I7KGOg==}
     peerDependencies:
-      '@cornerstonejs/core': 5.10.7
-      '@cornerstonejs/metadata': 5.10.7
+      '@cornerstonejs/core': 5.10.8
+      '@cornerstonejs/metadata': 5.10.8
       dicom-parser: 1.8.21
 
-  '@cornerstonejs/metadata@5.10.7':
-    resolution: {integrity: sha512-gQ2HQFfG8GH/Z8820asW9xmHW/KSu4xHq0AWlbWClNO1yXA/0ESqJrw4697cpjgT9vsYkDPk+dUTXw/ifv7Bsg==}
+  '@cornerstonejs/metadata@5.10.8':
+    resolution: {integrity: sha512-Ff66dlW4ggU0XCfBSDN4UmcSIkQkYixGiu0vgJw4ce1AngYWSAf0cNXvw4MEvkdfvDYPUznJLIW/7z6RAvRlpw==}
 
-  '@cornerstonejs/tools@5.10.7':
-    resolution: {integrity: sha512-k+aSAYRoa3n0GanMSge9JFOt7e2wf12ED5ZjqfjK9BXnpLdgg69eWUoyJN9KToYrzI+6iIwoOX6YHEhHavx/BA==}
+  '@cornerstonejs/tools@5.10.8':
+    resolution: {integrity: sha512-ECcwkwaMo2V61lJDDFBcYYnUa8oab92JbzKctKx14l2zYDHgdFHrA90O/A3ZKNzxErgUoCD2TlcW4Oq6WTXMPQ==}
     peerDependencies:
-      '@cornerstonejs/core': 5.10.7
+      '@cornerstonejs/core': 5.10.8
       '@kitware/vtk.js': 36.4.1
       '@types/d3-array': 3.2.1
       '@types/d3-interpolate': 3.0.4
@@ -290,8 +290,8 @@ packages:
       d3-interpolate: 3.0.1
       gl-matrix: 3.4.3
 
-  '@cornerstonejs/utils@5.10.7':
-    resolution: {integrity: sha512-4sknYJiEm7gO9VCuffZ6LK2zyklhYwigzo2POUyGlnRn3raR8xxORcVV29I0LNCdHyA+xLVpgRi7PBdaR8OcZw==}
+  '@cornerstonejs/utils@5.10.8':
+    resolution: {integrity: sha512-u31UX92eW4NujY/7M0ClyrL5F0K6iRjz0ZcTTGAVukmFVkFNX1YHWA1H+17diAjDig0kg5O74fz8tKHorttlaw==}
 
   '@dxup/nuxt@0.5.10':
     resolution: {integrity: sha512-54Vehb7LmR7qYpC6KFwjDTSm6CB1CayBu+JXdHrPLrIjjr5xAgb43jvgOU+mnB+tsRh414fSsEy0QjBMKILQ8g==}
@@ -5341,10 +5341,10 @@ snapshots:
 
   '@cornerstonejs/codec-openjph@2.4.9': {}
 
-  '@cornerstonejs/core@5.10.7(@cornerstonejs/metadata@5.10.7)(@cornerstonejs/utils@5.10.7)(autoprefixer@10.6.1(postcss@8.5.28))(wslink@2.5.0)':
+  '@cornerstonejs/core@5.10.8(@cornerstonejs/metadata@5.10.8)(@cornerstonejs/utils@5.10.8)(autoprefixer@10.6.1(postcss@8.5.28))(wslink@2.5.0)':
     dependencies:
-      '@cornerstonejs/metadata': 5.10.7
-      '@cornerstonejs/utils': 5.10.7
+      '@cornerstonejs/metadata': 5.10.8
+      '@cornerstonejs/utils': 5.10.8
       '@kitware/vtk.js': 36.4.1(autoprefixer@10.6.1(postcss@8.5.28))(wslink@2.5.0)
       comlink: 4.4.2
       gl-matrix: 3.4.3
@@ -5353,30 +5353,30 @@ snapshots:
       - autoprefixer
       - wslink
 
-  '@cornerstonejs/dicom-image-loader@5.10.7(@cornerstonejs/core@5.10.7(@cornerstonejs/metadata@5.10.7)(@cornerstonejs/utils@5.10.7)(autoprefixer@10.6.1(postcss@8.5.28))(wslink@2.5.0))(@cornerstonejs/metadata@5.10.7)(dicom-parser@1.8.21)':
+  '@cornerstonejs/dicom-image-loader@5.10.8(@cornerstonejs/core@5.10.8(@cornerstonejs/metadata@5.10.8)(@cornerstonejs/utils@5.10.8)(autoprefixer@10.6.1(postcss@8.5.28))(wslink@2.5.0))(@cornerstonejs/metadata@5.10.8)(dicom-parser@1.8.21)':
     dependencies:
       '@cornerstonejs/codec-charls': 1.2.5
       '@cornerstonejs/codec-libjpeg-turbo-8bit': 1.2.4
       '@cornerstonejs/codec-openjpeg': 1.3.2
       '@cornerstonejs/codec-openjph': 2.4.9
-      '@cornerstonejs/core': 5.10.7(@cornerstonejs/metadata@5.10.7)(@cornerstonejs/utils@5.10.7)(autoprefixer@10.6.1(postcss@8.5.28))(wslink@2.5.0)
-      '@cornerstonejs/metadata': 5.10.7
+      '@cornerstonejs/core': 5.10.8(@cornerstonejs/metadata@5.10.8)(@cornerstonejs/utils@5.10.8)(autoprefixer@10.6.1(postcss@8.5.28))(wslink@2.5.0)
+      '@cornerstonejs/metadata': 5.10.8
       comlink: 4.4.2
       dicom-parser: 1.8.21
       jpeg-lossless-decoder-js: 2.1.2
       pako: 2.1.0
       uuid: 9.0.1
 
-  '@cornerstonejs/metadata@5.10.7':
+  '@cornerstonejs/metadata@5.10.8':
     dependencies:
       '@cornerstonejs/calculate-suv': 1.0.3
-      '@cornerstonejs/utils': 5.10.7
+      '@cornerstonejs/utils': 5.10.8
       dcmjs: 0.52.0
       gl-matrix: 3.4.3
 
-  '@cornerstonejs/tools@5.10.7(@cornerstonejs/core@5.10.7(@cornerstonejs/metadata@5.10.7)(@cornerstonejs/utils@5.10.7)(autoprefixer@10.6.1(postcss@8.5.28))(wslink@2.5.0))(@kitware/vtk.js@36.4.1(autoprefixer@10.6.1(postcss@8.5.28))(wslink@2.5.0))(@types/d3-array@3.2.1)(@types/d3-interpolate@3.0.4)(d3-array@3.2.4)(d3-interpolate@3.0.1)(gl-matrix@3.4.4)':
+  '@cornerstonejs/tools@5.10.8(@cornerstonejs/core@5.10.8(@cornerstonejs/metadata@5.10.8)(@cornerstonejs/utils@5.10.8)(autoprefixer@10.6.1(postcss@8.5.28))(wslink@2.5.0))(@kitware/vtk.js@36.4.1(autoprefixer@10.6.1(postcss@8.5.28))(wslink@2.5.0))(@types/d3-array@3.2.1)(@types/d3-interpolate@3.0.4)(d3-array@3.2.4)(d3-interpolate@3.0.1)(gl-matrix@3.4.4)':
     dependencies:
-      '@cornerstonejs/core': 5.10.7(@cornerstonejs/metadata@5.10.7)(@cornerstonejs/utils@5.10.7)(autoprefixer@10.6.1(postcss@8.5.28))(wslink@2.5.0)
+      '@cornerstonejs/core': 5.10.8(@cornerstonejs/metadata@5.10.8)(@cornerstonejs/utils@5.10.8)(autoprefixer@10.6.1(postcss@8.5.28))(wslink@2.5.0)
       '@kitware/vtk.js': 36.4.1(autoprefixer@10.6.1(postcss@8.5.28))(wslink@2.5.0)
       '@types/d3-array': 3.2.1
       '@types/d3-interpolate': 3.0.4
@@ -5388,7 +5388,7 @@ snapshots:
       gl-matrix: 3.4.4
       lodash.get: 4.4.2
 
-  '@cornerstonejs/utils@5.10.7':
+  '@cornerstonejs/utils@5.10.8':
     dependencies:
       dcmjs: 0.52.0
 
