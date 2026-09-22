@@ -5,14 +5,17 @@ const { t } = useCornerstoneI18n()
 
 /**
  * The OHIF viewer's default keymap, which is what anyone arriving from a PACS
- * will try first. Key names are identifiers on the keyboard, so they are not
- * translated and the column stays LTR.
+ * will try first — except for Space, which plays the series here rather than
+ * resetting the viewport, and sends the reset to `R`. Key names are
+ * identifiers on the keyboard, so they are not translated and the column
+ * stays LTR.
  */
 const BINDINGS = [
   { keys: ['↑', '↓'], key: 'app.shortcuts.slice' },
   { keys: ['Page Up', 'Page Down'], key: 'app.shortcuts.series' },
   { keys: ['Home', 'End'], key: 'app.shortcuts.ends' },
-  { keys: ['Space'], key: 'app.shortcuts.reset' },
+  { keys: ['Space', 'C'], key: 'app.shortcuts.cine' },
+  { keys: ['R'], key: 'app.shortcuts.reset' },
   { keys: TOOLS.map(tool => tool.shortcut.toUpperCase()), key: 'app.shortcuts.tools' },
   { keys: ['?'], key: 'app.shortcuts.help' },
 ]

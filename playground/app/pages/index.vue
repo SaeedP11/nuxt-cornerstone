@@ -26,6 +26,7 @@ const viewport = shallowRef<CoreTypes.IStackViewport | null>(null)
 const helpVisible = ref(false)
 
 const annotations = useViewerAnnotations(viewport)
+const cine = useViewerCine(imageIds, imageIndex)
 
 /** Shown when a JSON file arrives before there is anything to draw it on. */
 const annotationNotice = ref<string | null>(null)
@@ -103,14 +104,31 @@ function resetCamera() {
   viewport.value?.render()
 }
 
+/**
+ * Moving through the stack by hand takes over from the player.
+ *
+ * Only the deliberate moves — the scrubber and the keyboard — go through here.
+ * The viewport's own `imageIndexChange` must not, because cine advancing a
+ * frame is exactly what raises it, and pausing on that would stop playback on
+ * its first frame.
+ */
+function scrubTo(index: number) {
+  cine.pause()
+  imageIndex.value = index
+}
+
 useViewerShortcuts({
   isEnabled: () => imageIds.value.length > 0,
-  step: study.step,
-  first: () => (imageIndex.value = 0),
-  last: () => (imageIndex.value = maxIndex.value),
+  step: (delta) => {
+    cine.pause()
+    study.step(delta)
+  },
+  first: () => scrubTo(0),
+  last: () => scrubTo(maxIndex.value),
   stepSeries: study.stepSeries,
   setTool: selectTool,
   resetViewport: resetCamera,
+  togglePlay: cine.toggle,
   toggleHelp: () => (helpVisible.value = !helpVisible.value),
 })
 
@@ -210,11 +228,22 @@ onMounted(() => {
 
     <ViewerScrubber
       v-if="imageIds.length"
+      v-model:frame-rate="cine.frameRate.value"
+      v-model:loop="cine.loop.value"
       :image-index="imageIndex"
       :max-index="maxIndex"
       :count="imageIds.length"
       :source-label="sourceLabel"
-      @update:image-index="imageIndex = $event"
+      :playing="cine.playing.value"
+      :can-play="cine.canPlay.value"
+      :preparing="cine.preparing.value"
+      :prepared="cine.prepared.value"
+      :buffering="cine.buffering.value"
+      :percent="cine.percent.value"
+      :status-text="cine.statusText.value"
+      @update:image-index="scrubTo"
+      @toggle-play="cine.toggle"
+      @prepare="cine.prepare"
     />
 
     <ViewerShortcutsDialog v-model:visible="helpVisible" />

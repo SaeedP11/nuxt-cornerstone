@@ -57,6 +57,10 @@ let resizeObserver: ResizeObserver | null = null
 let frame = 0
 let acquired = false
 let disposed = false
+/** True while a `setImageIdIndex` is in flight — see {@link showIndex}. */
+let settingIndex = false
+/** The newest index asked for while one was in flight, or `null`. */
+let queuedIndex: number | null = null
 
 function fail(caught: unknown): void {
   const asError = caught instanceof Error ? caught : new Error(String(caught))
@@ -114,6 +118,8 @@ function clampIndex(index: number, length: number): number {
 async function applyStack(imageIds: string[], index: number): Promise<void> {
   const vp = viewport.value
   if (!vp) return
+  // A frame still waiting to be shown belongs to the stack being replaced.
+  queuedIndex = null
   if (imageIds.length === 0) {
     vp.setStack([])
     vp.render()
@@ -121,6 +127,49 @@ async function applyStack(imageIds: string[], index: number): Promise<void> {
   }
   await vp.setStack(imageIds, clampIndex(index, imageIds.length))
   vp.render()
+}
+
+/**
+ * Show one image, with at most one change in flight.
+ *
+ * `setImageIdIndex` resolves only once the slice has been loaded and drawn,
+ * which can take longer than the gap between requests — cine playback asks for
+ * a frame every 30 ms or so, and scrubbing fires as fast as the pointer moves.
+ * Letting those overlap leaves several loads racing to draw into the same
+ * viewport, and the last one to finish wins rather than the last one asked for.
+ *
+ * So requests collapse: whatever arrives while a change is in flight replaces
+ * the previous waiting one, and only that survivor runs next. Frames in
+ * between are dropped, which is the right answer — they are already in the
+ * past, and drawing them would only make the viewport run late for ever.
+ */
+async function showIndex(target: number): Promise<void> {
+  if (settingIndex) {
+    queuedIndex = target
+    return
+  }
+
+  settingIndex = true
+  try {
+    let next: number | null = target
+    while (next !== null && !disposed) {
+      const vp = viewport.value
+      if (!vp) return
+      const current = next
+      next = null
+      if (vp.getCurrentImageIdIndex() !== current) await vp.setImageIdIndex(current)
+      if (queuedIndex !== null) {
+        next = queuedIndex
+        queuedIndex = null
+      }
+    }
+  }
+  catch (caught) {
+    if (!disposed) fail(caught)
+  }
+  finally {
+    settingIndex = false
+  }
 }
 
 onMounted(async () => {
@@ -179,18 +228,13 @@ watch(
 
 watch(
   () => props.imageIndex,
-  async (index) => {
+  (index) => {
     const vp = viewport.value
     if (!vp || props.imageIds.length === 0) return
     const target = clampIndex(index, props.imageIds.length)
     // Guard against the round trip when the parent mirrors imageIndexChange.
-    if (vp.getCurrentImageIdIndex() === target) return
-    try {
-      await vp.setImageIdIndex(target)
-    }
-    catch (caught) {
-      fail(caught)
-    }
+    if (!settingIndex && vp.getCurrentImageIdIndex() === target) return
+    showIndex(target)
   },
 )
 
@@ -229,9 +273,8 @@ defineExpose({
   status,
   error,
   setImageIndex: async (index: number) => {
-    const vp = viewport.value
-    if (!vp) return
-    await vp.setImageIdIndex(clampIndex(index, props.imageIds.length))
+    if (!viewport.value) return
+    await showIndex(clampIndex(index, props.imageIds.length))
   },
   resetCamera: () => {
     viewport.value?.resetCamera()

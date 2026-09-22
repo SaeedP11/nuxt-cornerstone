@@ -44,6 +44,16 @@ export type {
 } from './runtime/composables/useDicomFiles'
 
 export type {
+  PrefetchOptions,
+  PrefetchProgress,
+  PrefetchResult,
+} from './runtime/composables/useImagePrefetch'
+
+export type {
+  CinePlayerOptions,
+} from './runtime/composables/useCinePlayer'
+
+export type {
   AddBoxesOptions,
   AddBoxesResult,
   AddJsonOptions,

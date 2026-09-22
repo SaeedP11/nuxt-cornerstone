@@ -42,7 +42,10 @@ function onPickAnnotations(event: { files: File | File[] }) {
 </script>
 
 <template>
-  <header class="flex flex-wrap items-center gap-3 border-b border-[var(--p-content-border-color)] bg-[var(--p-content-background)] px-4 py-3">
+  <header
+    class="flex flex-wrap items-center gap-3 border-b border-[var(--p-content-border-color)] bg-[var(--p-content-background)] px-4 py-3"
+    @click="releaseFocus"
+  >
     <!-- A package name is an identifier, not prose: keep it LTR in both directions. -->
     <span
       dir="ltr"

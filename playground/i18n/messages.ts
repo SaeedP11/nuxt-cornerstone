@@ -46,6 +46,26 @@ export const en: MessageCatalog = {
   'app.annotations.failed': 'Could not read {file}: {message}',
   'app.annotations.needImages':
     'Open the DICOM images first — an annotation file is matched to the slices that are loaded.',
+
+  // Cine playback, and the prefetch that makes it run at the rate asked for.
+  'app.cine.play': 'Play the series',
+  'app.cine.pause': 'Pause',
+  'app.cine.buffering': 'Preparing enough of the series to play…',
+  'app.cine.loop': 'Loop',
+  'app.cine.frameRate': 'Frame rate',
+  'app.cine.fps': '{count} fps',
+  'app.cine.prepare': 'Prepare',
+  'app.cine.prepareHint':
+    'Decode every image up front, so playback and scrolling never wait for the loader.',
+  'app.cine.preparing': 'Preparing… {percent}%',
+  'app.cine.prepared': { one: '{count} image ready', other: '{count} images ready' },
+  'app.cine.preparedWithFailures': {
+    one: '{count} image ready, {failed} could not be decoded',
+    other: '{count} images ready, {failed} could not be decoded',
+  },
+  'app.cine.cacheFull':
+    'Image cache full at {count} images — the rest load as you reach them.',
+
   'app.tools.heading': 'Tools',
   'app.tool.windowLevel': 'Window/Level',
   'app.tool.pan': 'Pan',
@@ -61,6 +81,7 @@ export const en: MessageCatalog = {
   'app.shortcuts.ends': 'First / last image',
   'app.shortcuts.tools': 'Pick a tool — each button on the rail shows its key',
   'app.shortcuts.reset': 'Reset the viewport',
+  'app.shortcuts.cine': 'Play / pause the series',
   'app.shortcuts.help': 'Open this list',
 
   'app.progress.reading': 'Reading archive…',
@@ -129,6 +150,24 @@ export const fa: MessageCatalog = {
   'app.annotations.failed': 'خواندن {file} ممکن نشد: {message}',
   'app.annotations.needImages':
     'نخست تصاویر دایکام را باز کنید — فایل حاشیه‌نویسی با برش‌های بارگذاری‌شده تطبیق داده می‌شود.',
+
+  'app.cine.play': 'پخش سری',
+  'app.cine.pause': 'توقف',
+  'app.cine.buffering': 'در حال آماده‌سازی بخش کافی از سری برای پخش…',
+  'app.cine.loop': 'تکرار',
+  'app.cine.frameRate': 'نرخ فریم',
+  'app.cine.fps': '{count} فریم بر ثانیه',
+  'app.cine.prepare': 'آماده‌سازی',
+  'app.cine.prepareHint':
+    'همهٔ تصاویر از پیش رمزگشایی می‌شوند تا پخش و پیمایش منتظر بارگذار نمانند.',
+  'app.cine.preparing': 'در حال آماده‌سازی… ٪{percent}',
+  'app.cine.prepared': { other: '{count} تصویر آماده است' },
+  'app.cine.preparedWithFailures': {
+    other: '{count} تصویر آماده است، {failed} تصویر رمزگشایی نشد',
+  },
+  'app.cine.cacheFull':
+    'حافظهٔ نهان تصاویر در {count} تصویر پر شد — بقیه هنگام رسیدن به آن‌ها بارگذاری می‌شوند.',
+
   'app.tools.heading': 'ابزارها',
   'app.tool.windowLevel': 'پنجره/سطح',
   'app.tool.pan': 'جابه‌جایی',
@@ -144,6 +183,7 @@ export const fa: MessageCatalog = {
   'app.shortcuts.ends': 'نخستین / آخرین تصویر',
   'app.shortcuts.tools': 'انتخاب ابزار — کلید هر ابزار روی دکمهٔ آن در نوار نوشته شده است',
   'app.shortcuts.reset': 'بازنشانی نمای تصویر',
+  'app.shortcuts.cine': 'پخش / توقف سری',
   'app.shortcuts.help': 'باز کردن همین فهرست',
 
   'app.progress.reading': 'در حال خواندن بایگانی…',

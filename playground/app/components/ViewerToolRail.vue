@@ -28,6 +28,7 @@ function tooltipFor(tool: ToolSpec): string {
   <nav
     class="flex w-14 shrink-0 flex-col items-center gap-1 border-e border-[var(--p-content-border-color)] bg-[var(--p-content-background)] py-3"
     :aria-label="t('app.tools.heading')"
+    @click="releaseFocus"
   >
     <Button
       v-for="tool in TOOLS"
@@ -48,7 +49,7 @@ function tooltipFor(tool: ToolSpec): string {
     <Divider class="my-1!" />
 
     <Button
-      v-tooltip="{ value: `${t('app.resetCamera')} (Space)`, position: tooltipSide }"
+      v-tooltip="{ value: `${t('app.resetCamera')} (R)`, position: tooltipSide }"
       icon="pi pi-refresh"
       severity="secondary"
       text

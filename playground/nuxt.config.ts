@@ -32,7 +32,7 @@ export default defineNuxtConfig({
     // This allowlist is the only gate on what is available: a component not
     // named here is simply not registered.
     components: {
-      include: ['Button', 'Dialog', 'Divider', 'FileUpload', 'Listbox', 'Message', 'ProgressBar', 'SelectButton', 'Slider', 'Tag'],
+      include: ['Button', 'Dialog', 'Divider', 'FileUpload', 'Listbox', 'Message', 'ProgressBar', 'Select', 'SelectButton', 'Slider', 'Tag'],
     },
     directives: {
       include: ['Tooltip'],

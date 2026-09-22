@@ -104,6 +104,12 @@ Exposed: `viewport`, `viewportId`, `renderingEngineId`, `status`, `error`, `setI
 
 The default slot receives `{ status, error, viewport }` for overlays.
 
+`imageIndex` changes collapse rather than queue. `setImageIdIndex` resolves only once the slice has
+been loaded and drawn, which can take longer than the gap between requests — cine playback asks for
+a frame every 30 ms or so, and scrubbing fires as fast as the pointer moves. Only one change is
+ever in flight; whatever arrives while it runs replaces the previous waiting one, so the viewport
+follows the newest index asked for rather than the last load to finish.
+
 The element must have a size — give it a height. It waits for a non-zero box before enabling the
 viewport, because Cornerstone sizes its canvas from the element and a zero-sized element produces a
 camera that never recovers. A viewport that starts inside a collapsed panel therefore comes up when
@@ -209,8 +215,92 @@ counted; the last viewport to leave destroys the engine. `core.init()` allocates
 contexts (7 by default) and each engine takes one, so four viewports should share one engine rather
 than create four.
 
+**`useImagePrefetch()`** → `{ prepare, cancel, reset, isPrepared, loaded, failed, total, pending,
+progress, complete, cacheFull }`. Decodes a stack into Cornerstone's image cache ahead of time.
+
+**`useCinePlayer(index, frameCount, options?)`** → `{ playing, frameRate, loop, bounce, direction,
+canPlay, play, pause, toggle, setFrameRate, setDirection }`. Plays a stack as a film by advancing
+the index ref you give it. Both are covered under [Cine playback](#cine-playback).
+
 **`useDicomAnnotations(viewport)`** → `{ addBoxes, addJson, clear, setVisible, drawn, pending,
 visible }`. Draws boxes that were produced somewhere else — see below.
+
+### Cine playback
+
+A stack viewport loads each slice at the moment it is shown. That is right for scrolling and wrong
+for anything that moves on its own: at 15 frames a second the decoder never keeps up, and playback
+stutters through whatever happens to be cached. So the two halves go together — prepare the stack,
+then play it.
+
+```vue
+<script setup lang="ts">
+const imageIds = ref<string[]>([])
+const imageIndex = ref(0)
+
+const prefetch = useImagePrefetch()
+const cine = useCinePlayer(imageIndex, () => imageIds.value.length, { frameRate: 15 })
+
+// Prepare as soon as a stack has loaded, rather than making the user ask:
+// by the time they reach for play, the film is already in the cache. A new
+// stack cancels the run the old one started.
+watch(imageIds, (ids) => {
+  cine.pause()
+  prefetch.reset()
+  if (ids.length > 1) prefetch.prepare(ids, { order: 'forward' })
+})
+</script>
+
+<template>
+  <CornerstoneViewport
+    :image-ids="imageIds"
+    :image-index="imageIndex"
+    @image-index-change="imageIndex = $event"
+  />
+  <button @click="cine.toggle()">{{ cine.playing.value ? 'Pause' : 'Play' }}</button>
+  <progress :value="prefetch.progress.value" />
+</template>
+```
+
+`prepare(imageIds, options)` resolves once every image has been through the loader, and reports
+`{ loaded, failed, total, cancelled, cacheFull }`. Follow it live on the refs instead — `progress`
+is 0..1, and `pending` is true while it runs. Images already in the cache are counted and skipped,
+so preparing again after adding slices only fetches the new ones.
+
+| Option | Default | |
+| --- | --- | --- |
+| `from` | `0` | index to start from — pass the slice on screen |
+| `order` | `'outward'` | `'outward'` fans out either side of `from`; `'forward'` runs to the end and wraps |
+| `concurrency` | `4` | images decoded at once |
+| `priority` | `0` | passed to Cornerstone's loader; lower runs sooner |
+| `requestType` | `'prefetch'` | the request class the pool serves after anything the user waits on |
+| `onProgress` | — | `{ loaded, failed, total }` after each image settles |
+
+One instance runs one prepare at a time: a second call cancels the first, which is what you want
+when the user switches series mid-load. `cancel()` also abandons the requests in flight, and the
+composable calls it for you when its scope is disposed. Counters keep their values so a
+half-prepared stack can still say so; `reset()` clears them.
+
+A slice that will not decode is counted in `failed` and the rest continue. If the image cache fills
+up, the run stops rather than thrashing — each new slice would only evict one just decoded — and
+`cacheFull` says so. Raise the ceiling with `cache.setMaxCacheSize()` if a whole study has to fit.
+
+`useCinePlayer()` owns no images and no viewport. It advances the index ref, and whatever is bound
+to that index follows, so a scrubber, the keyboard and the player all move the same value. Frames
+are paced with `requestAnimationFrame` measured against the clock, so the rate does not drift and a
+backgrounded tab stops advancing instead of spending the battery. A frame that arrives late is
+shown late and the ones behind it are dropped, rather than the stack sprinting to catch up.
+
+| Option | Default | |
+| --- | --- | --- |
+| `frameRate` | `15` | clamped to 1..60; `frameRate` is writable, so a control can `v-model` it |
+| `loop` | `true` | `false` stops at the end |
+| `bounce` | `false` | reverse at each end instead of jumping — what a cardiac cine wants |
+| `direction` | `1` | `-1` plays towards the first image |
+
+`canPlay` is false for a stack of one, because a single image is a picture rather than a film. Draw
+the transport from it rather than only disabling by it — a play button on a series of one has
+nothing to do in any state, so leaving it out says so more clearly than greying it out. The player
+pauses itself when the stack is replaced or emptied.
 
 ### Imported annotations
 
@@ -638,6 +728,28 @@ over the stack, and the button beside it then shows and hides what it drew. A re
 dropped on the stage, on its own or alongside the study it belongs to, in which case it is drawn as
 soon as the images finish loading. Boxes are discarded whenever the stack changes, since they are
 keyed to the imageIds that were loaded when they were drawn.
+
+The footer is the transport. **Play** — or the spacebar, or `C` — runs the stack as a film at the
+rate chosen beside it, looping unless the loop button is turned off, and moving the scrubber or the
+arrow keys takes over from it. Space is the one place this demo parts company with the OHIF keymap,
+which resets the viewport with it; Space means play/pause everywhere else a person has used a media
+player, so the reset moves to `R`.
+
+Shortcuts are matched on the physical key rather than the character it types, so they work the same
+on a Persian, Russian or French layout — `W` is the key marked W, whatever it produces. They stay
+out of the way of anything that reads the keyboard itself: a text field, the frame-rate select, the
+series list, the scrubber's own arrow handling, and an open dialog.
+
+A stack **prepares itself** as soon as it has loaded — decoding every image into Cornerstone's
+cache, in playback order, so that playback and scrolling never wait for the loader — and the footer
+shows how far that has got. Play waits for half of it: until then the button holds a spinner rather
+than a play icon, and the keys do nothing. Half a stack is already a comfortable head start, because
+the film and the prefetch both run from the first image, and the rest arrives while that half plays. A prepare that stops early — cancelled by another series, or cut short by a full
+cache — releases play whatever it managed, so the button never spins on a run that is not coming
+back. The **Prepare** button is the way back when a run did
+not finish, because another series interrupted it or the image cache cut it short, and it
+disappears once there is nothing left to fetch. None of this appears for a series of a single
+image, which has nothing to play and nothing to fetch ahead of.
 
 The samples are the MIT-licensed test images from the Cornerstone3D repository: one CT slice in eight
 transfer syntaxes. Loading them as a single stack exercises every decoder — pako, RLE,
