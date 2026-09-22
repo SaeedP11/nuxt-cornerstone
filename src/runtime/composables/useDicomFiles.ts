@@ -71,6 +71,19 @@ export interface AddZipResult {
   skipped: SkippedEntry[]
 }
 
+/** See {@link useDicomFiles.indexUrls}. */
+export interface IndexUrlsOptions {
+  /** Files fetched at once. Default: `6`. */
+  concurrency?: number
+}
+
+export interface IndexUrlsResult {
+  /** Files whose SOPInstanceUID was read and recorded. */
+  indexed: number
+  /** URLs that could not be fetched, or were not readable DICOM. */
+  failed: string[]
+}
+
 interface DicomHeader {
   instanceNumber: number | null
   sopInstanceUid: string | null
@@ -213,6 +226,49 @@ export function useDicomFiles() {
     return url.startsWith('wadouri:') ? url : `wadouri:${url}`
   }
 
+  /**
+   * Read the headers of Part 10 files served over HTTP, so that imported
+   * annotations can find them by SOPInstanceUID.
+   *
+   * {@link toImageId} builds an imageId without reading anything, which is the
+   * point of it: the loader fetches the file when its slice is first shown.
+   * That leaves nothing to match a report against, so an application that
+   * serves its studies over HTTP calls this once after building its imageIds
+   * and before drawing boxes on them. Local files and archives are indexed as
+   * they are added and need none of this.
+   *
+   * Only the head of each file is asked for — a byte range, falling back to the
+   * whole file when the server will not serve ranges — and the pixel data is
+   * never parsed.
+   */
+  async function indexUrls(urls: string[], options: IndexUrlsOptions = {}): Promise<IndexUrlsResult> {
+    const { concurrency = 6 } = options
+    const failed: string[] = []
+    let indexed = 0
+
+    // A small pool rather than one fetch per slice at once: a 500-slice study
+    // would otherwise open 500 connections and the browser would queue them
+    // anyway, with nothing to show for it.
+    let next = 0
+    async function worker(): Promise<void> {
+      while (next < urls.length) {
+        const url = urls[next++]!
+        const uid = await readUrlHeader(url)
+        if (uid) {
+          registerInstance(uid, toImageId(url))
+          indexed += 1
+        }
+        else failed.push(url)
+      }
+    }
+
+    await Promise.all(
+      Array.from({ length: Math.min(concurrency, urls.length) }, () => worker()),
+    )
+
+    return { indexed, failed }
+  }
+
   /** Drop every registered file. imageIds handed out earlier stop resolving. */
   async function purge(): Promise<void> {
     const { dicomImageLoader } = await ensureCornerstone()
@@ -220,7 +276,7 @@ export function useDicomFiles() {
     clearInstanceIndex()
   }
 
-  return { addFiles, addZip, toImageId, purge, imageIdForSopInstanceUid }
+  return { addFiles, addZip, toImageId, indexUrls, purge, imageIdForSopInstanceUid }
 }
 
 /**
@@ -385,6 +441,30 @@ async function readFileHeader(file: File): Promise<DicomHeader | null> {
 
   if (file.size <= HEADER_PROBE_BYTES) return null
   return parseHeader(dicomParser, new Uint8Array(await file.arrayBuffer()))
+}
+
+/**
+ * Fetch just enough of a file served over HTTP to read its SOPInstanceUID.
+ *
+ * A byte range is asked for first. A server that honours it sends only the
+ * head; one that ignores it sends the whole file, which parses just as well,
+ * so no second request is needed either way.
+ */
+async function readUrlHeader(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url, {
+      headers: { Range: `bytes=0-${HEADER_PROBE_BYTES - 1}` },
+    })
+    if (!response.ok) return null
+
+    const dicomParser = await loadDicomParser()
+    const bytes = new Uint8Array(await response.arrayBuffer())
+    return parseHeader(dicomParser, bytes)?.sopInstanceUid ?? null
+  }
+  catch {
+    // Offline, blocked by CORS, or not DICOM. The caller reports the URL.
+    return null
+  }
 }
 
 function parseHeader(dicomParser: DicomParser, bytes: Uint8Array): DicomHeader | null {

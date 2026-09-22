@@ -49,7 +49,7 @@ export type Problem =
  */
 export function useViewerStudy() {
   const { ready, error: initError } = useCornerstone()
-  const { addFiles, addZip, toImageId, purge } = useDicomFiles()
+  const { addFiles, addZip, toImageId, indexUrls, purge } = useDicomFiles()
   const { t } = useCornerstoneI18n()
 
   const imageIds = ref<string[]>([])
@@ -149,10 +149,17 @@ export function useViewerStudy() {
     try {
       const manifest = await $fetch<SampleEntry[]>('/samples/manifest.json')
       if (!manifest.length) throw new Error('manifest is empty')
+      const urls = manifest.map(entry => `/samples/${entry.name}`)
       resetSeries()
       imageIndex.value = 0
-      imageIds.value = manifest.map(entry => toImageId(`/samples/${entry.name}`))
+      imageIds.value = urls.map(toImageId)
       source.value = { kind: 'samples', count: manifest.length }
+
+      // A `wadouri:` imageId is built without reading the file, so nothing
+      // would know these slices' SOPInstanceUIDs and an annotation file could
+      // never be matched to them. Indexing afterwards keeps the stack on screen
+      // straight away and does not block the images being shown.
+      indexUrls(urls)
     }
     catch {
       problem.value = { key: 'app.error.noSamples' }

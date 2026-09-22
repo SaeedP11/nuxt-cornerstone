@@ -1,7 +1,9 @@
 import { getCurrentScope, onScopeDispose, ref, toValue } from 'vue'
+import { readAnnotationJson } from '../annotation-json'
 import { ensureCornerstone } from '../cornerstone'
 import { imageIdForSopInstanceUid } from '../dicom-instances'
 import { t } from '../i18n'
+import type { ReadAnnotationsOptions, ReadAnnotationsResult } from '../annotation-json'
 import type { MaybeRefOrGetter, Ref } from 'vue'
 import type { CornerstoneLibs, StackViewport } from '../types'
 import type { Types as ToolsTypes } from '@cornerstonejs/tools'
@@ -45,6 +47,14 @@ export interface AddBoxesOptions {
    * silently diverge from the source.
    */
   locked?: boolean
+}
+
+export interface AddJsonOptions extends AddBoxesOptions, ReadAnnotationsOptions {}
+
+/** What {@link useDicomAnnotations.addJson} drew, and what it read to draw it. */
+export interface AddJsonResult extends AddBoxesResult {
+  /** The reader's own account of the file. See {@link ReadAnnotationsResult}. */
+  report: ReadAnnotationsResult
 }
 
 export interface AddBoxesResult {
@@ -376,6 +386,29 @@ export function useDicomAnnotations(
     return { drawn: immediate, deferred, unresolved }
   }
 
+  /**
+   * Read a JSON annotation file and draw what is in it.
+   *
+   * The file is picked, dropped or fetched by the application; everything
+   * {@link readAnnotationJson} accepts is accepted here. This is the ordinary
+   * way in — the DICOM files are opened first, so the SOPInstanceUID index they
+   * build is there for the report to match against, and then the report is
+   * opened on top of them.
+   *
+   * The reader's report comes back alongside the draw counts, because a file
+   * that parsed cleanly and placed nothing is the case worth telling the user
+   * about: it usually means the report belongs to a different series, which
+   * `report.seriesInstanceUid` names.
+   */
+  async function addJson(
+    input: File | Blob | string | unknown,
+    options: AddJsonOptions = {},
+  ): Promise<AddJsonResult> {
+    const report = await readAnnotationJson(input, options)
+    const result = await addBoxes(report.boxes, options)
+    return { ...result, report }
+  }
+
   function remove(uid: string): void {
     libs?.tools.annotation.state.removeAnnotation(uid)
     owned.delete(uid)
@@ -414,5 +447,5 @@ export function useDicomAnnotations(
   // composable, so it has to come off when the caller goes away.
   if (getCurrentScope()) onScopeDispose(stopWatching)
 
-  return { addBoxes, clear, setVisible, drawn, pending, visible, toolName: OVERLAY_TOOL_NAME }
+  return { addBoxes, addJson, clear, setVisible, drawn, pending, visible, toolName: OVERLAY_TOOL_NAME }
 }

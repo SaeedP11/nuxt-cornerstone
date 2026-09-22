@@ -19,10 +19,79 @@ const {
 } = study
 
 const tools = useCornerstoneTools()
+const { t } = useCornerstoneI18n()
 
 const activeTool = ref('WindowLevelTool')
 const viewport = shallowRef<CoreTypes.IStackViewport | null>(null)
 const helpVisible = ref(false)
+
+const annotations = useViewerAnnotations(viewport)
+
+/** Shown when a JSON file arrives before there is anything to draw it on. */
+const annotationNotice = ref<string | null>(null)
+
+function isAnnotationFile(file: File): boolean {
+  return /\.json$/i.test(file.name) || file.type === 'application/json'
+}
+
+/**
+ * Sort a picked or dropped selection into images and reports.
+ *
+ * Dropping a study and its report together is the natural gesture once both
+ * exist, so the stage accepts either without asking the user which button to
+ * use. A report on its own needs images to match against, which is a thing to
+ * say rather than to silently ignore.
+ */
+function handleFiles(files: File[]) {
+  const report = files.find(isAnnotationFile)
+  const images = files.filter(file => !isAnnotationFile(file))
+
+  annotationNotice.value = null
+  if (images.length) study.openAny(images)
+
+  if (!report) return
+  if (!images.length && !imageIds.value.length) {
+    annotationNotice.value = t('app.annotations.needImages')
+    return
+  }
+  openAnnotations(report)
+}
+
+/**
+ * Boxes are placed through the loaded slices' image planes, so a report
+ * dropped alongside a study has to wait for that study to finish opening.
+ */
+async function openAnnotations(file: File) {
+  annotationNotice.value = null
+  await settled(busy)
+  if (!imageIds.value.length) {
+    annotationNotice.value = t('app.annotations.needImages')
+    return
+  }
+  await annotations.open(file)
+}
+
+/** Resolve once `flag` is false, so a report can queue behind a study. */
+function settled(flag: Ref<boolean>): Promise<void> {
+  if (!flag.value) return Promise.resolve()
+  return new Promise((resolve) => {
+    const stop = watch(flag, (value) => {
+      if (value) return
+      stop()
+      resolve()
+    })
+  })
+}
+
+/**
+ * Boxes are keyed to the imageIds that were loaded when they were drawn, so a
+ * new stack — another series, another study, or none — discards them.
+ *
+ * `flush: 'sync'` matters: a report dropped together with its study is drawn as
+ * soon as the study finishes loading, and a watcher that ran on the next tick
+ * would run after that and erase the boxes it was meant to precede.
+ */
+watch(imageIds, () => annotations.reset(), { flush: 'sync' })
 
 async function selectTool(className: string) {
   activeTool.value = className
@@ -59,8 +128,13 @@ onMounted(() => {
       :ready="ready"
       :busy="busy"
       :has-images="imageIds.length > 0"
+      :annotations-busy="annotations.busy.value"
+      :annotations-loaded="annotations.loaded.value"
+      :annotations-visible="annotations.visible.value"
       @load-samples="study.loadSamples"
-      @open="study.openAny"
+      @open="handleFiles"
+      @open-annotations="openAnnotations"
+      @toggle-annotations="annotations.toggle"
       @clear="study.clear"
       @show-help="helpVisible = true"
     />
@@ -78,6 +152,26 @@ onMounted(() => {
       class="m-0 rounded-none"
     >
       {{ problemText }}
+    </Message>
+
+    <!-- Why an annotation file could not be read, or could not be matched yet. -->
+    <Message
+      v-if="annotations.failure.value ?? annotationNotice"
+      severity="warn"
+      :closable="false"
+      class="m-0 rounded-none"
+    >
+      {{ annotations.failure.value ?? annotationNotice }}
+    </Message>
+
+    <!-- What it held. Informational: the boxes are already on screen. -->
+    <Message
+      v-if="annotations.summaryText.value"
+      severity="info"
+      :closable="false"
+      class="m-0 rounded-none"
+    >
+      {{ annotations.summaryText.value }}
     </Message>
 
     <!-- What the guard turned away. Not a problem: the rest still loaded. -->
@@ -110,7 +204,7 @@ onMounted(() => {
         :image-index="imageIndex"
         @ready="viewport = $event"
         @update:image-index="imageIndex = $event"
-        @drop-files="study.openAny"
+        @drop-files="handleFiles"
       />
     </div>
 

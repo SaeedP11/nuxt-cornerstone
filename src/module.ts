@@ -36,6 +36,8 @@ export type {
   AddZipOptions,
   AddZipResult,
   DicomSeries,
+  IndexUrlsOptions,
+  IndexUrlsResult,
   SkippedEntry,
   SkipReason,
   ZipProgress,
@@ -44,10 +46,18 @@ export type {
 export type {
   AddBoxesOptions,
   AddBoxesResult,
+  AddJsonOptions,
+  AddJsonResult,
   DicomBox,
   PixelBox,
 } from './runtime/composables/useDicomAnnotations'
 
+export type {
+  AnnotationFormat,
+  FindingLabelInfo,
+  ReadAnnotationsOptions,
+  ReadAnnotationsResult,
+} from './runtime/annotation-json'
 
 const MODULE_NAME = 'nuxt-cornerstone'
 

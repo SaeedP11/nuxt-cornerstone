@@ -25,6 +25,27 @@ export const en: MessageCatalog = {
   'app.sidebar.collapse': 'Hide the series list',
   'app.sidebar.expand': 'Show the series list',
 
+  // A JSON report drawn on top of the images that are already open.
+  'app.annotations.open': 'Open annotations…',
+  'app.annotations.show': 'Show annotations',
+  'app.annotations.hide': 'Hide annotations',
+  'app.annotations.summary': '{file}: {placed} of {total} boxes placed.',
+  'app.annotations.waiting': {
+    one: '{count} more appears as you scroll to its slice.',
+    other: '{count} more appear as you scroll to their slices.',
+  },
+  'app.annotations.dropped': {
+    one: '{count} entry could not be read.',
+    other: '{count} entries could not be read.',
+  },
+  'app.annotations.empty': '{file} lists no annotations.',
+  'app.annotations.unmatched':
+    'None of the {total} boxes belong to the images on screen — the report names series {series}. Open that study to see them.',
+  'app.annotations.unmatchedNoSeries':
+    'None of the {total} boxes belong to the images on screen. They name slices that are not loaded.',
+  'app.annotations.failed': 'Could not read {file}: {message}',
+  'app.annotations.needImages':
+    'Open the DICOM images first — an annotation file is matched to the slices that are loaded.',
   'app.tools.heading': 'Tools',
   'app.tool.windowLevel': 'Window/Level',
   'app.tool.pan': 'Pan',
@@ -94,6 +115,20 @@ export const fa: MessageCatalog = {
   'app.sidebar.collapse': 'پنهان کردن فهرست سری‌ها',
   'app.sidebar.expand': 'نمایش فهرست سری‌ها',
 
+  'app.annotations.open': 'باز کردن حاشیه‌نویسی‌ها…',
+  'app.annotations.show': 'نمایش حاشیه‌نویسی‌ها',
+  'app.annotations.hide': 'پنهان کردن حاشیه‌نویسی‌ها',
+  'app.annotations.summary': '{file}: {placed} کادر از {total} کادر قرار گرفت.',
+  'app.annotations.waiting': { other: '{count} کادر دیگر با پیمایش به برش‌هایشان نمایان می‌شوند.' },
+  'app.annotations.dropped': { other: '{count} ورودی خوانده نشد.' },
+  'app.annotations.empty': 'فایل {file} هیچ حاشیه‌نویسی‌ای ندارد.',
+  'app.annotations.unmatched':
+    'هیچ‌یک از {total} کادر به تصاویر روی صفحه تعلق ندارد — این گزارش سری {series} را نام می‌برد. برای دیدن آن‌ها همان مطالعه را باز کنید.',
+  'app.annotations.unmatchedNoSeries':
+    'هیچ‌یک از {total} کادر به تصاویر روی صفحه تعلق ندارد؛ برش‌هایی را نام می‌برند که بارگذاری نشده‌اند.',
+  'app.annotations.failed': 'خواندن {file} ممکن نشد: {message}',
+  'app.annotations.needImages':
+    'نخست تصاویر دایکام را باز کنید — فایل حاشیه‌نویسی با برش‌های بارگذاری‌شده تطبیق داده می‌شود.',
   'app.tools.heading': 'ابزارها',
   'app.tool.windowLevel': 'پنجره/سطح',
   'app.tool.pan': 'جابه‌جایی',

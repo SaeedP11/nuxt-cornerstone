@@ -52,6 +52,14 @@ export const en = {
     + 'Mount it through <CornerstoneViewport>, or add it with useCornerstoneTools().addViewport().',
   'error.annotationTool':
     'RectangleROITool is not available from @cornerstonejs/tools, and imported boxes are drawn with it.',
+  'annotationJson.notJson': 'That file is not valid JSON: {message}',
+  'annotationJson.unknownShape':
+    'That JSON is not a recognised annotation file. '
+    + 'Expected a list of boxes, each with a `sopInstanceUid` and a `box`, '
+    + 'or a report with a `findings` array whose entries carry `slice_findings`.',
+  'annotationJson.finding': 'Finding {index}',
+  'annotationJson.class': 'Class {value}',
+  'annotationJson.labelled': '{name} · {confidence}%',
   'zip.tooLarge':
     'Archive expands to more than {limit} of DICOM data. '
     + 'Extract it and open the series you need, or raise `maxBytes`.',
@@ -95,6 +103,14 @@ export const fa: Record<CornerstoneMessageKey, MessageValue> = {
     + 'آن را با <CornerstoneViewport> سوار کنید، یا با useCornerstoneTools().addViewport() اضافه کنید.',
   'error.annotationTool':
     'ابزار RectangleROITool از @cornerstonejs/tools در دسترس نیست، و کادرهای واردشده با همین ابزار رسم می‌شوند.',
+  'annotationJson.notJson': 'این فایل JSON معتبر نیست: {message}',
+  'annotationJson.unknownShape':
+    'ساختار این JSON به‌عنوان فایل حاشیه‌نویسی شناخته نشد. '
+    + 'یک فهرست از کادرها که هرکدام `sopInstanceUid` و `box` دارند انتظار می‌رفت، '
+    + 'یا گزارشی با آرایهٔ `findings` که ورودی‌هایش `slice_findings` دارند.',
+  'annotationJson.finding': 'یافتهٔ {index}',
+  'annotationJson.class': 'کلاس {value}',
+  'annotationJson.labelled': '{name} · ٪{confidence}',
   'zip.tooLarge':
     'حجم بازشدهٔ این بایگانی بیش از {limit} دادهٔ دایکام است. '
     + 'آن را استخراج کنید و تنها سری موردنیاز را باز کنید، یا مقدار `maxBytes` را افزایش دهید.',

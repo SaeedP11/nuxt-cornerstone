@@ -3,11 +3,16 @@ defineProps<{
   ready: boolean
   busy: boolean
   hasImages: boolean
+  annotationsBusy: boolean
+  annotationsLoaded: boolean
+  annotationsVisible: boolean
 }>()
 
 const emit = defineEmits<{
   loadSamples: []
   open: [files: File[]]
+  openAnnotations: [file: File]
+  toggleAnnotations: []
   clear: []
   showHelp: []
 }>()
@@ -26,6 +31,13 @@ const localeOptions = computed(() =>
 // so the same files can be picked again.
 function onPick(event: { files: File | File[] }) {
   emit('open', Array.isArray(event.files) ? event.files : [event.files])
+}
+
+// One report at a time, so the picker takes one file and the newest replaces
+// whatever the last one drew.
+function onPickAnnotations(event: { files: File | File[] }) {
+  const file = Array.isArray(event.files) ? event.files[0] : event.files
+  if (file) emit('openAnnotations', file)
 }
 </script>
 
@@ -93,6 +105,34 @@ function onPick(event: { files: File | File[] }) {
       choose-icon="pi pi-folder-open"
       :choose-button-props="{ severity: 'secondary', size: 'small', loading: busy }"
       @uploader="onPick"
+    />
+
+    <!--
+      Annotations are matched to the slices that are loaded, so the picker only
+      appears once there are images to match them against. `accept` is safe
+      here in a way it is not for the DICOM picker: a report is a .json file
+      and says so.
+    -->
+    <FileUpload
+      v-if="hasImages"
+      mode="basic"
+      custom-upload
+      auto
+      accept="application/json,.json"
+      :choose-label="t('app.annotations.open')"
+      choose-icon="pi pi-flag"
+      :choose-button-props="{ severity: 'secondary', size: 'small', loading: annotationsBusy }"
+      @uploader="onPickAnnotations"
+    />
+
+    <!-- Once a report is drawn, the button only shows and hides it. -->
+    <Button
+      v-if="annotationsLoaded"
+      :label="annotationsVisible ? t('app.annotations.hide') : t('app.annotations.show')"
+      :icon="annotationsVisible ? 'pi pi-eye-slash' : 'pi pi-eye'"
+      :severity="annotationsVisible ? 'warn' : 'secondary'"
+      size="small"
+      @click="emit('toggleAnnotations')"
     />
 
     <Button

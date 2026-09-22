@@ -118,13 +118,15 @@ All are auto-imported.
 initialisation; `ensure()` resolves with `{ core, tools, dicomImageLoader }`. Initialisation is
 shared, so calling this from ten components still initialises once.
 
-**`useDicomFiles()`** → `{ addFiles, addZip, toImageId, purge, imageIdForSopInstanceUid }`. `addFiles(files)` registers local
-`File`s and returns `dicomfile:` imageIds sorted by **InstanceNumber** — read from tag (0020,0013)
-with `dicom-parser`, stopping at that tag, and falling back to a numeric-aware filename sort for
-files that do not carry it. Pass `{ sort: 'name' }` or `{ sort: false }` to change that.
-`toImageId(url)` builds a `wadouri:` id for a Part 10 file served over HTTP. `addZip(file)` unpacks
-a ZIP archive — see below. `imageIdForSopInstanceUid(uid)` answers where a slice ended up, which is
-how annotations from elsewhere find their image — see
+**`useDicomFiles()`** → `{ addFiles, addZip, toImageId, indexUrls, purge, imageIdForSopInstanceUid }`.
+`addFiles(files)` registers local `File`s and returns `dicomfile:` imageIds sorted by
+**InstanceNumber** — read from tag (0020,0013) with `dicom-parser`, stopping at that tag, and
+falling back to a numeric-aware filename sort for files that do not carry it. Pass
+`{ sort: 'name' }` or `{ sort: false }` to change that. `toImageId(url)` builds a `wadouri:` id for
+a Part 10 file served over HTTP. `addZip(file)` unpacks a ZIP archive — see below.
+`indexUrls(urls)` reads the headers of files served that way so imported annotations can find them,
+which `toImageId()` alone does not do. `imageIdForSopInstanceUid(uid)` answers where a slice ended
+up, which is how annotations from elsewhere find their image — see
 [Imported annotations](#imported-annotations).
 
 **`useCornerstoneI18n()`** → `{ locale, setLocale, availableLocales, dir, isRtl, t, n, formatBytes,
@@ -207,8 +209,8 @@ counted; the last viewport to leave destroys the engine. `core.init()` allocates
 contexts (7 by default) and each engine takes one, so four viewports should share one engine rather
 than create four.
 
-**`useDicomAnnotations(viewport)`** → `{ addBoxes, clear, setVisible, drawn, pending, visible }`.
-Draws boxes that were produced somewhere else — see below.
+**`useDicomAnnotations(viewport)`** → `{ addBoxes, addJson, clear, setVisible, drawn, pending,
+visible }`. Draws boxes that were produced somewhere else — see below.
 
 ### Imported annotations
 
@@ -271,6 +273,71 @@ were loaded when they were added, so clear them when the stack changes.
 | --- | --- | --- |
 | `color` | Cornerstone's locked colour | any CSS colour; applies to imported boxes only |
 | `locked` | `true` | `false` makes them editable |
+
+### Annotation files
+
+`addJson(file)` is the same thing starting from a JSON file rather than from objects you have
+already built. Open the DICOM images first — the boxes are matched to the slices that are loaded —
+then hand it whatever the user picked, dropped or you fetched: a `File`, a `Blob`, the JSON text, or
+an object that is already parsed.
+
+```vue
+<script setup lang="ts">
+const viewport = shallowRef<CoreTypes.IStackViewport | null>(null)
+const { addJson } = useDicomAnnotations(viewport)
+
+async function openReport(file: File) {
+  const { drawn, deferred, report } = await addJson(file, { color: 'rgb(251, 191, 36)' })
+
+  if (drawn + deferred === 0 && report.boxes.length) {
+    // Parsed fine, matched nothing: normally a report for a different series.
+    console.warn(`report belongs to series ${report.seriesInstanceUid}`)
+  }
+}
+</script>
+```
+
+Two layouts are read. The first is this module's own — a list of boxes, either as the whole document
+or under `boxes` / `annotations`:
+
+```json
+[{ "sopInstanceUid": "1.2.3", "box": { "x1": 10, "y1": 20, "x2": 80, "y2": 90 }, "label": "Nodule 1" }]
+```
+
+The second is a detector's output: findings, each holding the slices it was seen on, optionally
+wrapped in `predictions`.
+
+```json
+{ "predictions": { "findings": [
+  { "confidence": 0.87, "label": 1, "slice_findings": [
+    { "sop_instance_uid": "1.2.3",
+      "bounding_box": { "upper_left_x": 10, "upper_left_y": 20,
+                        "lower_right_x": 80, "lower_right_y": 90 } }
+  ] }
+] } }
+```
+
+Field names are read in both `camelCase` and `snake_case`, and a box may be written as two opposite
+corners, as `xMin`/`xMax`, as an origin with `width` and `height`, or as a bare `[x1, y1, x2, y2]`.
+A finding's own `bounding_box` is deliberately ignored: it is in the volume the model ran on, not in
+the pixel space of the images on screen, so only `slice_findings` is read. Anything else throws with
+a message naming what was expected; individual rows that cannot be read are counted in
+`report.malformed` rather than discarding the rest of the file.
+
+Boxes read from the detector shape are captioned with the finding's name — or its class — and its
+confidence, and are given a uid of `finding-<n>-<sopInstanceUid>`, so opening the same report twice
+replaces its boxes instead of stacking a second set on the first. Pass `label` to write your own
+caption, and `minConfidence` to drop findings below a threshold.
+
+| Option | Default | |
+| --- | --- | --- |
+| `minConfidence` | `0` | 0..1; detector shape only |
+| `label` | name + confidence | `(finding) => string` |
+
+`addJson` also takes `color` and `locked`, which it passes to `addBoxes`. It returns what `addBoxes`
+returns, plus `report`: `{ boxes, format, findings, filtered, malformed, seriesInstanceUid }`. For
+files served over HTTP, call `indexUrls()` before drawing — `toImageId()` builds an imageId without
+reading the file, so nothing would know its SOPInstanceUID.
 
 ## Options
 
@@ -565,6 +632,12 @@ and renders counts in Persian-Indic digits, while the viewport stays left-to-rig
 strings live in `playground/i18n/messages.ts` and are registered through
 `cornerstone.i18n.messages`, which is the point of it: the catalogue takes arbitrary keys, so an app
 can translate its chrome from one source without a second i18n library.
+
+**Open annotations…** appears once there are images on screen. It reads a JSON report and draws it
+over the stack, and the button beside it then shows and hides what it drew. A report can also be
+dropped on the stage, on its own or alongside the study it belongs to, in which case it is drawn as
+soon as the images finish loading. Boxes are discarded whenever the stack changes, since they are
+keyed to the imageIds that were loaded when they were drawn.
 
 The samples are the MIT-licensed test images from the Cornerstone3D repository: one CT slice in eight
 transfer syntaxes. Loading them as a single stack exercises every decoder — pako, RLE,
