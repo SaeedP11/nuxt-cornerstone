@@ -1,4 +1,5 @@
 import { defineNuxtPlugin, useRuntimeConfig } from '#imports'
+import type { ObjectPlugin } from '#app'
 import { configureI18n } from './i18n'
 import { followHostLocale, sourcesOf } from './i18n/detect'
 import type { CornerstoneModuleOptions } from './types'
@@ -12,7 +13,9 @@ import type { CornerstoneModuleOptions } from './types'
  * `<html lang dir>` has to match what the client will hydrate to. Doing this in
  * the client plugin alone produces a first paint in English that then flips.
  */
-export default defineNuxtPlugin({
+// Annotated for the same reason as the client plugin: an inferred object-plugin
+// type is not portable through mkdist's declaration emit (TS2742).
+const plugin: ObjectPlugin = defineNuxtPlugin({
   name: 'nuxt-cornerstone:i18n',
   enforce: 'pre',
   setup(nuxtApp) {
@@ -29,3 +32,5 @@ export default defineNuxtPlugin({
     followHostLocale(nuxtApp, sourcesOf(i18n.detect))
   },
 })
+
+export default plugin

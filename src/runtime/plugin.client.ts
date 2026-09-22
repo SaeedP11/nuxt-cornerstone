@@ -1,4 +1,5 @@
 import { defineNuxtPlugin, useRuntimeConfig } from '#imports'
+import type { ObjectPlugin } from '#app'
 import { t } from './i18n'
 import {
   configureCornerstone,
@@ -8,7 +9,17 @@ import {
 } from './cornerstone'
 import type { CornerstoneLibs, CornerstoneModuleOptions } from './types'
 
-export default defineNuxtPlugin({
+/** What this plugin injects, reachable as `$cornerstone` / `useNuxtApp()`. */
+export interface NuxtCornerstone {
+  ensure: (overrides?: CornerstoneModuleOptions) => Promise<CornerstoneLibs>
+  get: () => CornerstoneLibs | null
+  options: typeof getCornerstoneOptions
+}
+
+// Annotated rather than inferred: the inferred type of an object plugin reaches
+// into Nuxt's own `NuxtApp` declaration, which mkdist cannot name portably when
+// it emits this file's declarations (TS2742), and the build fails on it.
+const plugin: ObjectPlugin<{ cornerstone: NuxtCornerstone }> = defineNuxtPlugin({
   name: 'nuxt-cornerstone',
   enforce: 'pre',
   setup() {
@@ -39,3 +50,5 @@ export default defineNuxtPlugin({
     }
   },
 })
+
+export default plugin
