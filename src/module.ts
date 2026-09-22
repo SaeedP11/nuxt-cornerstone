@@ -1,3 +1,6 @@
+import { existsSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
+import { dirname, resolve as resolvePath } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import {
   addComponent,
@@ -230,6 +233,13 @@ export default defineNuxtModule<ModuleOptions>({
 
       config.assetsInclude = unique([...toArray(config.assetsInclude), '**/*.wasm'])
 
+      // Dev only: the decoders are served raw, and some of them point at source
+      // maps that were never published. See {@link stripDanglingSourcemaps}.
+      if (nuxt.options.dev) {
+        config.plugins ??= []
+        config.plugins.push(stripDanglingSourcemaps())
+      }
+
       if (options.viteCommonjs) {
         // The Emscripten codec bundles are UMD/CommonJS and are served raw,
         // because the loader that imports them is excluded from prebundling.
@@ -262,6 +272,67 @@ export default defineNuxtModule<ModuleOptions>({
     })
   },
 })
+
+/** A trailing `//# sourceMappingURL=…` comment, and the file it names. */
+const MAP_COMMENT = /\/\/[#@]\s*sourceMappingURL=(\S+)\s*$/
+
+/**
+ * Stop Vite warning about source maps that a dependency references but never
+ * shipped.
+ *
+ * `jpeg-lossless-decoder-js` is the one that shows up here — its published
+ * `lossless.js` ends with `//# sourceMappingURL=lossless.js.map` and the
+ * archive contains no such file — but it is a whole class rather than one
+ * package: a build that emits the comment and then publishes only `release/`
+ * leaves the reference dangling, and several of the decode-path dependencies
+ * are built that way. The warning is noise, several frames of stack per
+ * decoder, on every cold dev start.
+ *
+ * Vite reads the map in `loadAndTransform`, and only when no plugin has
+ * answered the `load` hook. So answering it is the fix: the file is returned
+ * with the dangling comment blanked, and Vite has nothing left to chase.
+ *
+ * This is deliberately narrow.
+ *
+ * - Dev only. The warning comes from the dev server's transform path, and a
+ *   production build resolves maps through Rollup instead.
+ * - Only files under `node_modules`. Your own sources keep their maps.
+ * - Only when the map is genuinely missing. A dependency that ships one is
+ *   handed straight back to Vite, which loads it as it always did, so nothing
+ *   that debugs today stops debugging.
+ * - Inline `data:` maps are left alone: they need no file, so they never warn.
+ *
+ * In practice this only ever sees the handful of packages that are excluded
+ * from prebundling, since everything else is served from an esbuild-optimised
+ * chunk and never reaches this hook.
+ */
+function stripDanglingSourcemaps() {
+  return {
+    name: 'nuxt-cornerstone:dangling-sourcemaps',
+    enforce: 'pre' as const,
+    apply: 'serve' as const,
+    async load(id: string) {
+      const file = id.split('?')[0]!
+      if (!file.endsWith('.js') || !file.includes('node_modules')) return null
+
+      let code: string
+      try {
+        code = await readFile(file, 'utf8')
+      }
+      catch {
+        // Not a readable file on disk — a virtual module, say. Leave it to Vite,
+        // which reports a real failure here properly.
+        return null
+      }
+
+      const target = code.match(MAP_COMMENT)?.[1]
+      if (!target || target.startsWith('data:')) return null
+      if (existsSync(resolvePath(dirname(file), target))) return null
+
+      return { code: code.replace(MAP_COMMENT, ''), map: null }
+    },
+  }
+}
 
 type Logger = ReturnType<typeof useLogger>
 
