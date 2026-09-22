@@ -92,6 +92,33 @@ function ownsKeyboard(target: EventTarget | null): boolean {
   return target.closest(OWNS_KEYBOARD) !== null
 }
 
+/**
+ * A Cornerstone-enabled viewport element.
+ *
+ * Cornerstone gives the element `tabIndex = -1` when it enables it, which makes
+ * it take focus on a click without joining the tab order. That matters here
+ * because `@cornerstonejs/tools` then puts a `keydown` listener of its own on
+ * the element and calls `preventDefault()` on *every* key before re-raising it
+ * as a Cornerstone `KEY_DOWN` event — unconditionally, whether or not any tool
+ * is bound to that key. So from the first click on the image onwards, every
+ * keypress reaches the window listener below already marked as handled, and a
+ * plain `defaultPrevented` check would throw the whole keymap away.
+ *
+ * Deleting is where this showed up first: selecting a measurement means
+ * clicking it, so Delete is the one binding that cannot be reached without
+ * having focused the viewport on the way.
+ *
+ * The two data attributes are what Cornerstone's own `getEnabledElement` reads,
+ * and it removes them again when the element is disabled — so this recognises a
+ * live viewport without importing anything.
+ */
+const CORNERSTONE_VIEWPORT = '[data-viewport-uid][data-rendering-engine-uid]'
+
+function isCornerstoneViewport(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  return target.closest(CORNERSTONE_VIEWPORT) !== null
+}
+
 /** Inside an open modal. Its own keys work; the viewer's stay out of its way. */
 function isInDialog(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
@@ -152,8 +179,10 @@ export function useViewerShortcuts(
   function onKeydown(event: KeyboardEvent) {
     // The listener is on `window`, so it runs after the focused element's own
     // handler has bubbled past: anything a widget has already dealt with
-    // arrives here marked, and is left alone.
-    if (event.defaultPrevented) return
+    // arrives here marked, and is left alone. The viewport is the exception:
+    // it marks every key handled whether or not it did anything with it, so its
+    // flag carries no information and is not read. See `isCornerstoneViewport`.
+    if (event.defaultPrevented && !isCornerstoneViewport(event.target)) return
     if (event.ctrlKey || event.metaKey || event.altKey) return
     if (ownsKeyboard(event.target)) return
 
