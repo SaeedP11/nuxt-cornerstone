@@ -1,6 +1,7 @@
 import tailwindcss from '@tailwindcss/vite'
 import Aura from '@primeuix/themes/aura'
 import { messages } from './i18n/messages'
+import { stripIgnoredEnvironmentHooks } from './build/environment-hooks'
 
 export default defineNuxtConfig({
   modules: ['../src/module', '@primevue/nuxt-module'],
@@ -15,6 +16,16 @@ export default defineNuxtConfig({
 
   vite: {
     plugins: [tailwindcss()],
+  },
+
+  // Development only, through Nuxt's own environment override rather than a
+  // check inside the hook: a build has no reason to rewrite other people's
+  // plugins. Keeps the dev log to things the developer can act on — see the
+  // helper for what it removes and why that is safe.
+  $development: {
+    hooks: {
+      'vite:extendConfig': stripIgnoredEnvironmentHooks,
+    },
   },
 
   primevue: {
