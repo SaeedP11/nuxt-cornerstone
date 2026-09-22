@@ -29,21 +29,6 @@ export const en: MessageCatalog = {
   'app.annotations.open': 'Open annotations…',
   'app.annotations.show': 'Show annotations',
   'app.annotations.hide': 'Hide annotations',
-  'app.annotations.summary': '{file}: {placed} of {total} boxes placed.',
-  'app.annotations.waiting': {
-    one: '{count} more appears as you scroll to its slice.',
-    other: '{count} more appear as you scroll to their slices.',
-  },
-  'app.annotations.dropped': {
-    one: '{count} entry could not be read.',
-    other: '{count} entries could not be read.',
-  },
-  'app.annotations.empty': '{file} lists no annotations.',
-  'app.annotations.unmatched':
-    'None of the {total} boxes belong to the images on screen — the report names series {series}. Open that study to see them.',
-  'app.annotations.unmatchedNoSeries':
-    'None of the {total} boxes belong to the images on screen. They name slices that are not loaded.',
-  'app.annotations.failed': 'Could not read {file}: {message}',
   'app.annotations.needImages':
     'Open the DICOM images first — an annotation file is matched to the slices that are loaded.',
 
@@ -57,14 +42,6 @@ export const en: MessageCatalog = {
   'app.cine.prepare': 'Prepare',
   'app.cine.prepareHint':
     'Decode every image up front, so playback and scrolling never wait for the loader.',
-  'app.cine.preparing': 'Preparing… {percent}%',
-  'app.cine.prepared': { one: '{count} image ready', other: '{count} images ready' },
-  'app.cine.preparedWithFailures': {
-    one: '{count} image ready, {failed} could not be decoded',
-    other: '{count} images ready, {failed} could not be decoded',
-  },
-  'app.cine.cacheFull':
-    'Image cache full at {count} images — the rest load as you reach them.',
 
   'app.tools.heading': 'Tools',
   'app.tool.windowLevel': 'Window/Level',
@@ -84,41 +61,13 @@ export const en: MessageCatalog = {
   'app.shortcuts.cine': 'Play / pause the series',
   'app.shortcuts.help': 'Open this list',
 
-  'app.progress.reading': 'Reading archive…',
-  'app.progress.extracting': 'Extracting…',
-  'app.progress.indexing': 'Reading headers {done} / {total}',
-
   'app.error.noSamples':
     'No samples found. Run `pnpm samples` to download them into playground/public/samples/.',
-  'app.error.noDicomInZip': 'No DICOM images found in {file}.',
-  'app.error.noDicomFiles': {
-    one: 'That file is not DICOM.',
-    other: 'None of those {count} files is DICOM.',
-  },
-
-  // What the guard turned away, and why. Reasons read as a noun phrase so
-  // they drop straight into "{name} ({reason})".
-  'app.skipped.summary': '{count}: {named}',
-  'app.skipped.more': '{count}: {named}, and {rest} more',
-  'app.skipped.entry': '{name} ({reason})',
-  'app.skip.metadata': 'housekeeping file',
-  'app.skip.notDicomExtension': 'not a DICOM extension',
-  'app.skip.notDicom': 'no DICOM header',
-  'app.skip.empty': 'empty',
 
   'app.source.samples': {
     one: '{count} bundled sample (one CT slice per transfer syntax)',
     other: '{count} bundled samples (one CT slice per transfer syntax)',
   },
-  'app.source.files': {
-    one: '{count} local file, sorted by InstanceNumber',
-    other: '{count} local files, sorted by InstanceNumber',
-  },
-  'app.source.zip': '{file} — {images} in {series}',
-  'app.count.images': { one: '{count} image', other: '{count} images' },
-  // "Series" is its own plural; the old hand-rolled version said "serieses".
-  'app.count.series': { one: '{count} series', other: '{count} series' },
-  'app.count.skipped': { one: '{count} file skipped', other: '{count} files skipped' },
 }
 
 export const fa: MessageCatalog = {
@@ -139,15 +88,6 @@ export const fa: MessageCatalog = {
   'app.annotations.open': 'باز کردن حاشیه‌نویسی‌ها…',
   'app.annotations.show': 'نمایش حاشیه‌نویسی‌ها',
   'app.annotations.hide': 'پنهان کردن حاشیه‌نویسی‌ها',
-  'app.annotations.summary': '{file}: {placed} کادر از {total} کادر قرار گرفت.',
-  'app.annotations.waiting': { other: '{count} کادر دیگر با پیمایش به برش‌هایشان نمایان می‌شوند.' },
-  'app.annotations.dropped': { other: '{count} ورودی خوانده نشد.' },
-  'app.annotations.empty': 'فایل {file} هیچ حاشیه‌نویسی‌ای ندارد.',
-  'app.annotations.unmatched':
-    'هیچ‌یک از {total} کادر به تصاویر روی صفحه تعلق ندارد — این گزارش سری {series} را نام می‌برد. برای دیدن آن‌ها همان مطالعه را باز کنید.',
-  'app.annotations.unmatchedNoSeries':
-    'هیچ‌یک از {total} کادر به تصاویر روی صفحه تعلق ندارد؛ برش‌هایی را نام می‌برند که بارگذاری نشده‌اند.',
-  'app.annotations.failed': 'خواندن {file} ممکن نشد: {message}',
   'app.annotations.needImages':
     'نخست تصاویر دایکام را باز کنید — فایل حاشیه‌نویسی با برش‌های بارگذاری‌شده تطبیق داده می‌شود.',
 
@@ -160,13 +100,6 @@ export const fa: MessageCatalog = {
   'app.cine.prepare': 'آماده‌سازی',
   'app.cine.prepareHint':
     'همهٔ تصاویر از پیش رمزگشایی می‌شوند تا پخش و پیمایش منتظر بارگذار نمانند.',
-  'app.cine.preparing': 'در حال آماده‌سازی… ٪{percent}',
-  'app.cine.prepared': { other: '{count} تصویر آماده است' },
-  'app.cine.preparedWithFailures': {
-    other: '{count} تصویر آماده است، {failed} تصویر رمزگشایی نشد',
-  },
-  'app.cine.cacheFull':
-    'حافظهٔ نهان تصاویر در {count} تصویر پر شد — بقیه هنگام رسیدن به آن‌ها بارگذاری می‌شوند.',
 
   'app.tools.heading': 'ابزارها',
   'app.tool.windowLevel': 'پنجره/سطح',
@@ -186,29 +119,10 @@ export const fa: MessageCatalog = {
   'app.shortcuts.cine': 'پخش / توقف سری',
   'app.shortcuts.help': 'باز کردن همین فهرست',
 
-  'app.progress.reading': 'در حال خواندن بایگانی…',
-  'app.progress.extracting': 'در حال استخراج…',
-  'app.progress.indexing': 'خواندن سرآیندها {done} / {total}',
-
   'app.error.noSamples':
     'نمونه‌ای پیدا نشد. برای دانلود آن‌ها در playground/public/samples/ دستور `pnpm samples` را اجرا کنید.',
-  'app.error.noDicomInZip': 'هیچ تصویر دایکامی در {file} پیدا نشد.',
-  'app.error.noDicomFiles': { other: 'هیچ‌کدام از آن {count} فایل دایکام نیست.' },
-
-  'app.skipped.summary': '{count}: {named}',
-  'app.skipped.more': '{count}: {named} و {rest} مورد دیگر',
-  'app.skipped.entry': '{name} ({reason})',
-  'app.skip.metadata': 'فایل جانبی',
-  'app.skip.notDicomExtension': 'پسوند دایکام نیست',
-  'app.skip.notDicom': 'سرآیند دایکام ندارد',
-  'app.skip.empty': 'خالی',
 
   'app.source.samples': { other: '{count} نمونهٔ همراه (یک برش CT برای هر نحو انتقال)' },
-  'app.source.files': { other: '{count} فایل محلی، مرتب‌شده بر اساس InstanceNumber' },
-  'app.source.zip': '{file} — {images} در {series}',
-  'app.count.images': { other: '{count} تصویر' },
-  'app.count.series': { other: '{count} سری' },
-  'app.count.skipped': { other: '{count} فایل نادیده گرفته شد' },
 }
 
 export const messages = { en, fa }

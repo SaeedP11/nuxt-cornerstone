@@ -54,6 +54,31 @@ export type {
 } from './runtime/composables/useCinePlayer'
 
 export type {
+  OpenUrlsOptions,
+  Problem,
+  SourceInfo,
+} from './runtime/composables/useDicomStudy'
+
+export type {
+  GuardResult,
+  RejectedFile,
+} from './runtime/composables/useDicomGuard'
+
+export type {
+  StackCineOptions,
+} from './runtime/composables/useStackCine'
+
+export type {
+  AnnotationReportOptions,
+} from './runtime/composables/useAnnotationReport'
+
+export type {
+  ToolShortcut,
+  ViewerShortcutHandlers,
+  ViewerShortcutOptions,
+} from './runtime/composables/useViewerShortcuts'
+
+export type {
   AddBoxesOptions,
   AddBoxesResult,
   AddJsonOptions,

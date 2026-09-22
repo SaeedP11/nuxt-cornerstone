@@ -2,8 +2,8 @@ import {
   CONTENT_PROBE_BYTES,
   isDicomContent,
   nonDicomNameReason,
-} from '../../../src/runtime/dicom-zip'
-import type { SkipReason } from '../../../src/runtime/dicom-zip'
+} from '../dicom-zip'
+import type { SkipReason } from '../dicom-zip'
 
 export interface RejectedFile {
   name: string
@@ -26,8 +26,8 @@ export interface GuardResult {
  *
  * Every file has to prove itself. A name is not evidence in either direction:
  * plenty of DICOM files are called `IM000001`, and a PNG renamed to `.dcm` is
- * still a PNG. The decision is made on content, by the module's own
- * {@link isDicomContent}, which is the same test its archive reader applies.
+ * still a PNG. The decision is made on content, by {@link isDicomContent},
+ * which is the same test the archive reader applies.
  */
 export async function guardDicomFiles(files: File[]): Promise<GuardResult> {
   const accepted: File[] = []

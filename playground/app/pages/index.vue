@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Types as CoreTypes } from '@cornerstonejs/core'
 
-const study = useViewerStudy()
+const study = useDicomStudy()
 const {
   ready,
   imageIds,
@@ -25,8 +25,35 @@ const activeTool = ref('WindowLevelTool')
 const viewport = shallowRef<CoreTypes.IStackViewport | null>(null)
 const helpVisible = ref(false)
 
-const annotations = useViewerAnnotations(viewport)
-const cine = useViewerCine(imageIds, imageIndex)
+const annotations = useAnnotationReport(viewport)
+const cine = useStackCine(imageIds, imageIndex)
+
+interface SampleEntry {
+  name: string
+  label: string
+  bytes: number
+}
+
+/**
+ * The bundled stack, served from `public/`. `pnpm samples` downloads it and
+ * it is gitignored, so it exists in a checkout and not in a build — which is
+ * why the button that calls this is development-only.
+ *
+ * The caption is passed as a getter rather than a string so that it, like
+ * every label the study produces, is rewritten when the locale changes.
+ */
+async function loadSamples() {
+  try {
+    const manifest = await $fetch<SampleEntry[]>('/samples/manifest.json')
+    if (!manifest.length) throw new Error('manifest is empty')
+    study.openUrls(manifest.map(entry => `/samples/${entry.name}`), {
+      label: () => t('app.source.samples', { count: manifest.length }),
+    })
+  }
+  catch {
+    study.setProblem({ key: 'app.error.noSamples' })
+  }
+}
 
 /** Shown when a JSON file arrives before there is anything to draw it on. */
 const annotationNotice = ref<string | null>(null)
@@ -130,13 +157,13 @@ useViewerShortcuts({
   resetViewport: resetCamera,
   togglePlay: cine.toggle,
   toggleHelp: () => (helpVisible.value = !helpVisible.value),
-})
+}, { tools: TOOLS })
 
 // /?samples loads the bundled stack straight away, which makes the demo
 // linkable and lets a headless browser drive it. Development-only for the
 // same reason as the button: a build does not carry the samples.
 onMounted(() => {
-  if (import.meta.dev && useRoute().query.samples !== undefined) study.loadSamples()
+  if (import.meta.dev && useRoute().query.samples !== undefined) loadSamples()
 })
 </script>
 
@@ -149,7 +176,7 @@ onMounted(() => {
       :annotations-busy="annotations.busy.value"
       :annotations-loaded="annotations.loaded.value"
       :annotations-visible="annotations.visible.value"
-      @load-samples="study.loadSamples"
+      @load-samples="loadSamples"
       @open="handleFiles"
       @open-annotations="openAnnotations"
       @toggle-annotations="annotations.toggle"

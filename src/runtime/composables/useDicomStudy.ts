@@ -1,31 +1,30 @@
-import type { DicomSeries, ZipProgress } from '../../../src/runtime/composables/useDicomFiles'
-import type { SkipReason } from '../../../src/runtime/dicom-zip'
+import { computed, ref, shallowRef } from 'vue'
+import { t } from '../i18n'
+import { useCornerstone } from './useCornerstone'
+import { useDicomFiles } from './useDicomFiles'
+import { guardDicomFiles } from './useDicomGuard'
+import type { DicomSeries, ZipProgress } from './useDicomFiles'
 import type { RejectedFile } from './useDicomGuard'
+import type { SkipReason } from '../dicom-zip'
 
 /** Why the guard turned a file away, as something a reader can act on. */
 const SKIP_REASON_KEY: Record<SkipReason, string> = {
-  'metadata': 'app.skip.metadata',
-  'not-dicom-extension': 'app.skip.notDicomExtension',
-  'not-dicom': 'app.skip.notDicom',
-  'empty': 'app.skip.empty',
+  'metadata': 'study.skip.metadata',
+  'not-dicom-extension': 'study.skip.notDicomExtension',
+  'not-dicom': 'study.skip.notDicom',
+  'empty': 'study.skip.empty',
 }
 
 /** Files named individually before the rest become "and N more". */
 const MAX_NAMED_REJECTS = 3
 
-interface SampleEntry {
-  name: string
-  label: string
-  bytes: number
-}
-
 /**
  * What produced the current stack. Kept as data rather than as a finished
- * string, so the footer re-renders in the new language when the locale changes
+ * string, so a caption re-renders in the new language when the locale changes
  * instead of freezing whatever was picked at load time.
  */
 export type SourceInfo =
-  | { kind: 'samples', count: number }
+  | { kind: 'urls', count: number }
   | { kind: 'files', count: number, skipped: number }
   | { kind: 'zip', file: string, images: number, series: number, skipped: number }
 
@@ -38,19 +37,42 @@ export type Problem =
   | { key: string, params?: Record<string, string | number> }
   | { message: string }
 
+export interface OpenUrlsOptions {
+  /**
+   * Read each image's headers after the stack is on screen. Default: `true`.
+   *
+   * A `wadouri:` imageId is built without reading the file, so nothing would
+   * know these slices' SOPInstanceUIDs and an annotation report could never be
+   * matched to them. Indexing afterwards keeps the images showing straight
+   * away and does not block them.
+   */
+  index?: boolean
+  /**
+   * A caption for {@link useDicomStudy.sourceLabel} in place of the built-in
+   * count. Pass a getter rather than a string, so it re-runs on a locale
+   * switch like every other label here.
+   */
+  label?: () => string
+}
+
 /**
- * Everything the demo knows about the stack on screen: where it came from, how
- * loading it is going, and which series of an archive is showing.
+ * Everything an application needs to know about the stack on screen: where it
+ * came from, how loading it is going, and which series of an archive is
+ * showing.
+ *
+ * This is the orchestration layer over {@link useDicomFiles} — the part every
+ * viewer ends up writing, and the part that has nothing to do with how the
+ * viewer looks. It produces state and already-translated captions; the
+ * application supplies the buttons, the drop target and the series list.
  *
  * State is created per call rather than held at module scope. Module-scoped
- * state is shared by every in-flight request during SSR, which is the same trap
- * the module's README describes for the locale. The page calls this once and
- * passes what each component needs down as props.
+ * state is shared by every in-flight request during SSR, which is the same
+ * trap the README describes for the locale. Call this once, high up, and pass
+ * what each component needs down as props.
  */
-export function useViewerStudy() {
+export function useDicomStudy() {
   const { ready, error: initError } = useCornerstone()
   const { addFiles, addZip, toImageId, indexUrls, purge } = useDicomFiles()
-  const { t } = useCornerstoneI18n()
 
   const imageIds = ref<string[]>([])
   const imageIndex = ref(0)
@@ -58,7 +80,10 @@ export function useViewerStudy() {
   const busy = ref(false)
   const problem = ref<Problem | null>(null)
 
-  // ZIP state. `series` stays empty for every other source, which is what the
+  /** Set by `openUrls({ label })`, and cleared by every other source. */
+  const sourceLabelOverride = shallowRef<(() => string) | null>(null)
+
+  // ZIP state. `series` stays empty for every other source, which is what a
   // series browser keys off.
   const series = shallowRef<DicomSeries[]>([])
   const activeSeriesUid = ref<string | null>(null)
@@ -79,22 +104,24 @@ export function useViewerStudy() {
   /** Both file and archive sources report what they left behind the same way. */
   function withSkipped(summary: string, skipped: number): string {
     if (!skipped) return summary
-    return summary + t('list.separator') + t('app.count.skipped', { count: skipped })
+    return summary + t('list.separator') + t('study.count.skipped', { count: skipped })
   }
 
   const sourceLabel = computed(() => {
     const value = source.value
     if (!value) return ''
-    if (value.kind === 'samples') return t('app.source.samples', { count: value.count })
+    if (value.kind === 'urls') {
+      return sourceLabelOverride.value?.() ?? t('study.source.urls', { count: value.count })
+    }
     if (value.kind === 'files') {
-      return withSkipped(t('app.source.files', { count: value.count }), value.skipped)
+      return withSkipped(t('study.source.files', { count: value.count }), value.skipped)
     }
 
     return withSkipped(
-      t('app.source.zip', {
+      t('study.source.zip', {
         file: value.file,
-        images: t('app.count.images', { count: value.images }),
-        series: t('app.count.series', { count: value.series }),
+        images: t('series.images', { count: value.images }),
+        series: t('study.count.series', { count: value.series }),
       }),
       value.skipped,
     )
@@ -110,25 +137,25 @@ export function useViewerStudy() {
 
     const named = list
       .slice(0, MAX_NAMED_REJECTS)
-      .map(entry => t('app.skipped.entry', {
+      .map(entry => t('study.skipped.entry', {
         name: entry.name,
         reason: t(SKIP_REASON_KEY[entry.reason]),
       }))
       .join(t('list.separator'))
 
-    const count = t('app.count.skipped', { count: list.length })
+    const count = t('study.count.skipped', { count: list.length })
     const rest = list.length - Math.min(list.length, MAX_NAMED_REJECTS)
     return rest > 0
-      ? t('app.skipped.more', { count, named, rest })
-      : t('app.skipped.summary', { count, named })
+      ? t('study.skipped.more', { count, named, rest })
+      : t('study.skipped.summary', { count, named })
   })
 
   const progressLabel = computed(() => {
     const value = progress.value
     if (!value) return ''
-    if (value.phase === 'reading') return t('app.progress.reading')
-    if (value.phase === 'extracting') return t('app.progress.extracting')
-    return t('app.progress.indexing', { done: value.done, total: value.total })
+    if (value.phase === 'reading') return t('study.progress.reading')
+    if (value.phase === 'extracting') return t('study.progress.extracting')
+    return t('study.progress.indexing', { done: value.done, total: value.total })
   })
 
   /** Indeterminate until there is something countable to count. */
@@ -139,37 +166,31 @@ export function useViewerStudy() {
   })
 
   /**
-   * The bundled stack. `pnpm samples` downloads it and it is gitignored, so it
-   * exists in a checkout and not in a build — which is why the button that
-   * calls this is development-only.
+   * Show a stack that is already served over HTTP, in the order given.
+   *
+   * This is the path for a study that comes from an application's own server
+   * or a PACS proxy rather than from the user's disk. Nothing is fetched here:
+   * each URL becomes a `wadouri:` imageId, and the viewport loads a slice when
+   * it shows it.
    */
-  async function loadSamples() {
-    busy.value = true
-    problem.value = null
-    try {
-      const manifest = await $fetch<SampleEntry[]>('/samples/manifest.json')
-      if (!manifest.length) throw new Error('manifest is empty')
-      const urls = manifest.map(entry => `/samples/${entry.name}`)
-      resetSeries()
-      imageIndex.value = 0
-      imageIds.value = urls.map(toImageId)
-      source.value = { kind: 'samples', count: manifest.length }
+  function openUrls(urls: string[], options: OpenUrlsOptions = {}) {
+    if (!urls.length) {
+      problem.value = { key: 'study.error.noUrls' }
+      return
+    }
 
-      // A `wadouri:` imageId is built without reading the file, so nothing
-      // would know these slices' SOPInstanceUIDs and an annotation file could
-      // never be matched to them. Indexing afterwards keeps the stack on screen
-      // straight away and does not block the images being shown.
-      indexUrls(urls)
-    }
-    catch {
-      problem.value = { key: 'app.error.noSamples' }
-    }
-    finally {
-      busy.value = false
-    }
+    problem.value = null
+    rejected.value = []
+    resetSeries()
+    imageIndex.value = 0
+    imageIds.value = urls.map(toImageId)
+    source.value = { kind: 'urls', count: urls.length }
+    sourceLabelOverride.value = options.label ?? null
+
+    if (options.index !== false) indexUrls(urls)
   }
 
-  async function open(files: File[] | FileList | null) {
+  async function openFiles(files: File[] | FileList | null) {
     if (!files) return
     const list = Array.from(files)
     if (!list.length) return
@@ -177,6 +198,7 @@ export function useViewerStudy() {
     busy.value = true
     problem.value = null
     rejected.value = []
+    sourceLabelOverride.value = null
     try {
       const guard = await guardDicomFiles(list)
       rejected.value = guard.rejected
@@ -184,7 +206,7 @@ export function useViewerStudy() {
       // Nothing survived: say so rather than clearing the viewport, so a
       // mis-picked folder does not look like a viewer that broke.
       if (!guard.accepted.length) {
-        problem.value = { key: 'app.error.noDicomFiles', params: { count: list.length } }
+        problem.value = { key: 'study.error.noDicomFiles', params: { count: list.length } }
         return
       }
 
@@ -206,6 +228,7 @@ export function useViewerStudy() {
     busy.value = true
     problem.value = null
     progress.value = null
+    sourceLabelOverride.value = null
     // The archive reports what it skipped through `source`, so the guard's
     // notice from a previous open must not linger next to it.
     rejected.value = []
@@ -218,7 +241,7 @@ export function useViewerStudy() {
         resetSeries()
         imageIds.value = []
         source.value = null
-        problem.value = { key: 'app.error.noDicomInZip', params: { file: file.name } }
+        problem.value = { key: 'study.error.noDicomInZip', params: { file: file.name } }
         return
       }
 
@@ -260,8 +283,8 @@ export function useViewerStudy() {
   }
 
   /**
-   * One way in for everything the user hands over, whether picked from the
-   * dialog or dropped on the stage.
+   * One way in for everything the user hands over, whether picked from a
+   * dialog or dropped on the viewport.
    *
    * An archive is unpacked; anything else goes through the plain file path,
    * where the guard vets it. Choosing a ZIP alongside loose files is
@@ -271,7 +294,7 @@ export function useViewerStudy() {
     if (!files.length) return
     const archive = files.find(isZip)
     if (archive) openZip(archive)
-    else open(files)
+    else openFiles(files)
   }
 
   /** Move `delta` images through the stack, stopping at either end. */
@@ -291,13 +314,21 @@ export function useViewerStudy() {
     selectSeries(series.value[next]!.seriesInstanceUid)
   }
 
+  /** Forget the stack and release everything it registered. */
   async function clear() {
     imageIds.value = []
     imageIndex.value = 0
     source.value = null
+    sourceLabelOverride.value = null
     rejected.value = []
+    problem.value = null
     resetSeries()
     await purge()
+  }
+
+  /** Report a problem of the application's own in the same place as ours. */
+  function setProblem(value: Problem | null) {
+    problem.value = value
   }
 
   return {
@@ -315,11 +346,14 @@ export function useViewerStudy() {
     progressValue,
     sourceLabel,
     rejectedText,
-    loadSamples,
+    openUrls,
+    openFiles,
+    openZip,
     openAny,
     selectSeries,
     step,
     stepSeries,
     clear,
+    setProblem,
   }
 }

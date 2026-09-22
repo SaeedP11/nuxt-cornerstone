@@ -79,6 +79,63 @@ export const en = {
   'bytes.unit.MB': 'MB',
   'bytes.unit.GB': 'GB',
   'bytes.unit.TB': 'TB',
+
+  // ---------------------------------------------------------------------
+  // useDicomStudy: what was opened, how the opening is going, and what was
+  // turned away. Reasons read as a noun phrase so they drop straight into
+  // "{name} ({reason})".
+  'study.progress.reading': 'Reading archive…',
+  'study.progress.extracting': 'Extracting…',
+  'study.progress.indexing': 'Reading headers {done} / {total}',
+  'study.error.noDicomInZip': 'No DICOM images found in {file}.',
+  'study.error.noDicomFiles': {
+    one: 'That file is not DICOM.',
+    other: 'None of those {count} files is DICOM.',
+  },
+  'study.error.noUrls': 'None of those addresses could be read.',
+  'study.skipped.summary': '{count}: {named}',
+  'study.skipped.more': '{count}: {named}, and {rest} more',
+  'study.skipped.entry': '{name} ({reason})',
+  'study.skip.metadata': 'housekeeping file',
+  'study.skip.notDicomExtension': 'not a DICOM extension',
+  'study.skip.notDicom': 'no DICOM header',
+  'study.skip.empty': 'empty',
+  'study.source.files': {
+    one: '{count} local file, sorted by InstanceNumber',
+    other: '{count} local files, sorted by InstanceNumber',
+  },
+  'study.source.urls': { one: '{count} image', other: '{count} images' },
+  'study.source.zip': '{file} — {images} in {series}',
+  // "Series" is its own plural; a hand-rolled one says "serieses".
+  'study.count.series': { one: '{count} series', other: '{count} series' },
+  'study.count.skipped': { one: '{count} file skipped', other: '{count} files skipped' },
+
+  // useStackCine: how far decoding the stack ahead of playback has got.
+  'cine.preparing': 'Preparing… {percent}%',
+  'cine.prepared': { one: '{count} image ready', other: '{count} images ready' },
+  'cine.preparedWithFailures': {
+    one: '{count} image ready, {failed} could not be decoded',
+    other: '{count} images ready, {failed} could not be decoded',
+  },
+  'cine.cacheFull': 'Image cache full at {count} images — the rest load as you reach them.',
+
+  // useAnnotationReport: what a JSON report placed on the stack on screen.
+  'report.summary': '{file}: {placed} of {total} boxes placed.',
+  'report.waiting': {
+    one: '{count} more appears as you scroll to its slice.',
+    other: '{count} more appear as you scroll to their slices.',
+  },
+  'report.dropped': {
+    one: '{count} entry could not be read.',
+    other: '{count} entries could not be read.',
+  },
+  'report.empty': '{file} lists no annotations.',
+  'report.unmatched':
+    'None of the {total} boxes belong to the images on screen — the report names series {series}. '
+    + 'Open that study to see them.',
+  'report.unmatchedNoSeries':
+    'None of the {total} boxes belong to the images on screen. They name slices that are not loaded.',
+  'report.failed': 'Could not read {file}: {message}',
 } satisfies MessageCatalog
 
 export const fa: Record<CornerstoneMessageKey, MessageValue> = {
@@ -128,6 +185,43 @@ export const fa: Record<CornerstoneMessageKey, MessageValue> = {
   'bytes.unit.MB': 'مگابایت',
   'bytes.unit.GB': 'گیگابایت',
   'bytes.unit.TB': 'ترابایت',
+
+  'study.progress.reading': 'در حال خواندن بایگانی…',
+  'study.progress.extracting': 'در حال استخراج…',
+  'study.progress.indexing': 'خواندن سرآیندها {done} / {total}',
+  'study.error.noDicomInZip': 'هیچ تصویر دایکامی در {file} پیدا نشد.',
+  'study.error.noDicomFiles': { other: 'هیچ‌کدام از آن {count} فایل دایکام نیست.' },
+  'study.error.noUrls': 'هیچ‌یک از آن نشانی‌ها خوانده نشد.',
+  'study.skipped.summary': '{count}: {named}',
+  'study.skipped.more': '{count}: {named} و {rest} مورد دیگر',
+  'study.skipped.entry': '{name} ({reason})',
+  'study.skip.metadata': 'فایل جانبی',
+  'study.skip.notDicomExtension': 'پسوند دایکام نیست',
+  'study.skip.notDicom': 'سرآیند دایکام ندارد',
+  'study.skip.empty': 'خالی',
+  'study.source.files': { other: '{count} فایل محلی، مرتب‌شده بر اساس InstanceNumber' },
+  'study.source.urls': { other: '{count} تصویر' },
+  'study.source.zip': '{file} — {images} در {series}',
+  'study.count.series': { other: '{count} سری' },
+  'study.count.skipped': { other: '{count} فایل نادیده گرفته شد' },
+
+  'cine.preparing': 'در حال آماده‌سازی… ٪{percent}',
+  'cine.prepared': { other: '{count} تصویر آماده است' },
+  'cine.preparedWithFailures': {
+    other: '{count} تصویر آماده است، {failed} تصویر رمزگشایی نشد',
+  },
+  'cine.cacheFull': 'حافظهٔ نهان تصاویر در {count} تصویر پر شد — بقیه هنگام رسیدن به آن‌ها بارگذاری می‌شوند.',
+
+  'report.summary': '{file}: {placed} کادر از {total} کادر قرار گرفت.',
+  'report.waiting': { other: '{count} کادر دیگر با پیمایش به برش‌هایشان نمایان می‌شوند.' },
+  'report.dropped': { other: '{count} ورودی خوانده نشد.' },
+  'report.empty': 'فایل {file} هیچ حاشیه‌نویسی‌ای ندارد.',
+  'report.unmatched':
+    'هیچ‌یک از {total} کادر به تصاویر روی صفحه تعلق ندارد — این گزارش سری {series} را نام می‌برد. '
+    + 'برای دیدن آن‌ها همان مطالعه را باز کنید.',
+  'report.unmatchedNoSeries':
+    'هیچ‌یک از {total} کادر به تصاویر روی صفحه تعلق ندارد؛ برش‌هایی را نام می‌برند که بارگذاری نشده‌اند.',
+  'report.failed': 'خواندن {file} ممکن نشد: {message}',
 }
 
 export const BUILTIN_MESSAGES: Record<string, MessageCatalog> = { en, fa }

@@ -1,24 +1,32 @@
+import { computed, ref } from 'vue'
+import { t } from '../i18n'
+import { useDicomAnnotations } from './useDicomAnnotations'
 import type { MaybeRefOrGetter } from 'vue'
-import type { Types as CoreTypes } from '@cornerstonejs/core'
-
-/**
- * The demo's side of loading a JSON annotation file.
- *
- * The module reads the file and draws the boxes; what is left here is the part
- * an application always owns — which file the user picked, and what to tell
- * them about it afterwards. The interesting case is a file that parsed
- * perfectly and placed nothing, which normally means the report was made from a
- * different series rather than that anything went wrong.
- */
+import type { StackViewport } from '../types'
 
 /** Amber: nothing on a greyscale image is close to it, and it is not alarm red. */
-const BOX_COLOR = 'rgb(251, 191, 36)'
+const DEFAULT_BOX_COLOR = 'rgb(251, 191, 36)'
 
-export function useViewerAnnotations(
-  viewport: MaybeRefOrGetter<CoreTypes.IStackViewport | null>,
+export interface AnnotationReportOptions {
+  /** CSS colour for the boxes. Default: amber. */
+  color?: string
+}
+
+/**
+ * Opening a JSON annotation report as a user action.
+ *
+ * {@link useDicomAnnotations} reads the file and draws the boxes; this adds the
+ * part an application always ends up writing — which file is open, whether its
+ * boxes are showing, and what to tell the reader afterwards. The interesting
+ * case is a file that parsed perfectly and placed nothing, which normally means
+ * the report was made from a different series rather than that anything went
+ * wrong, and which a bare count would not explain.
+ */
+export function useAnnotationReport(
+  viewport: MaybeRefOrGetter<StackViewport | null | undefined>,
+  options: AnnotationReportOptions = {},
 ) {
   const { addJson, clear, setVisible, visible, drawn, pending } = useDicomAnnotations(viewport)
-  const { t } = useCornerstoneI18n()
 
   const busy = ref(false)
   const loaded = ref(false)
@@ -26,7 +34,12 @@ export function useViewerAnnotations(
   const failure = ref<string | null>(null)
 
   /** Kept as numbers so the notice re-renders in the new language on a switch. */
-  const stats = ref<{ total: number, placed: number, malformed: number, series: string | null } | null>(null)
+  const stats = ref<{
+    total: number
+    placed: number
+    malformed: number
+    series: string | null
+  } | null>(null)
 
   /**
    * Read one file and draw it, replacing whatever a previous file drew.
@@ -40,7 +53,7 @@ export function useViewerAnnotations(
     failure.value = null
     try {
       clear()
-      const result = await addJson(file, { color: BOX_COLOR })
+      const result = await addJson(file, { color: options.color ?? DEFAULT_BOX_COLOR })
 
       fileName.value = file.name
       loaded.value = true
@@ -54,7 +67,7 @@ export function useViewerAnnotations(
     }
     catch (caught) {
       reset()
-      failure.value = t('app.annotations.failed', {
+      failure.value = t('report.failed', {
         file: file.name,
         message: caught instanceof Error ? caught.message : String(caught),
       })
@@ -68,7 +81,7 @@ export function useViewerAnnotations(
     setVisible(!visible.value)
   }
 
-  /** Called when the stack changes: boxes are keyed to the imageIds it had. */
+  /** Call when the stack changes: boxes are keyed to the imageIds it had. */
   function reset() {
     clear()
     loaded.value = false
@@ -81,23 +94,23 @@ export function useViewerAnnotations(
     const value = stats.value
     if (!value || !fileName.value) return null
 
-    if (value.total === 0) return t('app.annotations.empty', { file: fileName.value })
+    if (value.total === 0) return t('report.empty', { file: fileName.value })
 
     if (value.placed === 0) {
       return value.series
-        ? t('app.annotations.unmatched', { total: value.total, series: value.series })
-        : t('app.annotations.unmatchedNoSeries', { total: value.total })
+        ? t('report.unmatched', { total: value.total, series: value.series })
+        : t('report.unmatchedNoSeries', { total: value.total })
     }
 
     const parts = [
-      t('app.annotations.summary', {
+      t('report.summary', {
         file: fileName.value,
         placed: value.placed,
         total: value.total,
       }),
     ]
-    if (pending.value > 0) parts.push(t('app.annotations.waiting', { count: pending.value }))
-    if (value.malformed > 0) parts.push(t('app.annotations.dropped', { count: value.malformed }))
+    if (pending.value > 0) parts.push(t('report.waiting', { count: pending.value }))
+    if (value.malformed > 0) parts.push(t('report.dropped', { count: value.malformed }))
     return parts.join(' ')
   })
 

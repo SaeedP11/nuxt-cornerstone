@@ -1,5 +1,35 @@
+import { onMounted, onUnmounted } from 'vue'
+
+/** A tool the keyboard can select, by its `@cornerstonejs/tools` class name. */
+export interface ToolShortcut {
+  className: string
+  /** A single letter, matched at its QWERTY position — see below. */
+  shortcut: string
+}
+
+/**
+ * The letter bindings, following the OHIF viewer's defaults where it has them:
+ * `w`, `p` and `z` for window/level, pan and zoom. OHIF binds no keys for
+ * annotation tools, so the rest are conventional rather than specified — `m`
+ * for measure because `l` is rotate-left in OHIF, and `b` for the box because
+ * `r` is rotate-right.
+ *
+ * Pass your own list to {@link useViewerShortcuts} when your toolbar offers a
+ * different set; a toolbar and its keymap should read from one table, so that
+ * the key a button advertises is the key that works.
+ */
+export const DEFAULT_TOOL_SHORTCUTS: ToolShortcut[] = [
+  { className: 'WindowLevelTool', shortcut: 'w' },
+  { className: 'PanTool', shortcut: 'p' },
+  { className: 'ZoomTool', shortcut: 'z' },
+  { className: 'LengthTool', shortcut: 'm' },
+  { className: 'RectangleROITool', shortcut: 'b' },
+  { className: 'EllipticalROITool', shortcut: 'e' },
+  { className: 'ProbeTool', shortcut: 't' },
+]
+
 export interface ViewerShortcutHandlers {
-  /** False while nothing is loaded, so the keys stay inert on an empty demo. */
+  /** False while nothing is loaded, so the keys stay inert on an empty viewer. */
   isEnabled: () => boolean
   /** Move through the stack, positive forwards. */
   step: (delta: number) => void
@@ -11,21 +41,28 @@ export interface ViewerShortcutHandlers {
   resetViewport: () => void
   /** Start or stop cine playback. */
   togglePlay: () => void
+  /** Show the application's own list of these bindings. */
   toggleHelp: () => void
+}
+
+export interface ViewerShortcutOptions {
+  /** Defaults to {@link DEFAULT_TOOL_SHORTCUTS}. */
+  tools?: ToolShortcut[]
 }
 
 /**
  * Widgets that read the keyboard themselves, and must be left to it.
  *
- * Tag names alone are not enough. PrimeVue builds its Select and Listbox out
- * of focusable `div`s carrying ARIA roles, not `<select>` elements, and their
- * type-ahead — press `w` to jump to the first option starting with w — does
- * not call `preventDefault()`. So a letter pressed on the frame-rate select
- * or the series list would search the list and switch the viewer's tool at the
- * same time. Matching on the role is what actually catches them.
+ * Tag names alone are not enough. Component libraries build their select and
+ * listbox widgets out of focusable `div`s carrying ARIA roles, not `<select>`
+ * elements, and their type-ahead — press `w` to jump to the first option
+ * starting with w — does not call `preventDefault()`. So a letter pressed on a
+ * frame-rate select or a series list would search the list and switch the
+ * viewer's tool at the same time. Matching on the role is what actually
+ * catches them.
  *
- * `[role="slider"]` is deliberately absent. The scrubber handles the arrows,
- * Home, End and the page keys itself and marks each one handled, which the
+ * `[role="slider"]` is deliberately absent. A scrubber that handles the
+ * arrows, Home, End and the page keys itself marks each one handled, which the
  * `defaultPrevented` check below already respects; excluding the whole widget
  * would instead make Space dead whenever the scrubber happens to have focus.
  */
@@ -57,7 +94,7 @@ function isInDialog(target: EventTarget | null): boolean {
 
 /**
  * Something Space or Enter already activates. Stealing Space from a focused
- * button would make the rail unusable from the keyboard.
+ * button would make a toolbar unusable from the keyboard.
  */
 function isActivatable(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
@@ -70,7 +107,7 @@ function codeForLetter(letter: string): string {
 }
 
 /**
- * Keyboard control for the viewer, following the OHIF viewer's default keymap
+ * Keyboard control for a viewer, following the OHIF viewer's default keymap
  * — the closest thing this corner of the world has to a standard, and the one
  * anyone arriving from a PACS will try first.
  *
@@ -83,19 +120,25 @@ function codeForLetter(letter: string): string {
  * `event.code` names the key's position instead, so `W` is the key marked W on
  * the keyboard whatever it types, and the letters in the tooltips stay true.
  * The trade-off is Dvorak and other remapped layouts, where the keys keep
- * their QWERTY positions; PrimeVue's own components make the same choice.
+ * their QWERTY positions; component libraries make the same choice.
  *
  * The horizontal arrows are deliberately unbound: OHIF gives them to moving
- * between viewports, and this demo has one. That also sidesteps the question
- * of which arrow means "forward" when the chrome is right-to-left.
+ * between viewports, and a single-viewport layout has nowhere to go. That also
+ * sidesteps the question of which arrow means "forward" when the chrome is
+ * right-to-left.
  *
  * Space is the one place this parts company with OHIF, which resets the
  * viewport with it. Space means play/pause everywhere a person has ever used
- * a media player, and this viewer has a film to play, so it goes to cine and
- * the reset moves to `R`. `R` is free here — it is rotate-right in OHIF, and
- * this demo has no rotate tool.
+ * a media player, and a stack has a film to play, so it goes to cine and the
+ * reset moves to `R`. `R` is free here — it is rotate-right in OHIF, and there
+ * is no rotate tool in this module's default set.
  */
-export function useViewerShortcuts(handlers: ViewerShortcutHandlers) {
+export function useViewerShortcuts(
+  handlers: ViewerShortcutHandlers,
+  options: ViewerShortcutOptions = {},
+) {
+  const tools = options.tools ?? DEFAULT_TOOL_SHORTCUTS
+
   function onKeydown(event: KeyboardEvent) {
     // The listener is on `window`, so it runs after the focused element's own
     // handler has bubbled past: anything a widget has already dealt with
@@ -115,7 +158,7 @@ export function useViewerShortcuts(handlers: ViewerShortcutHandlers) {
       return
     }
 
-    // The help dialog traps focus, so everything below would otherwise be
+    // A help dialog traps focus, so everything below would otherwise be
     // driving the stack behind an open modal.
     if (isInDialog(event.target)) return
 
@@ -142,7 +185,8 @@ export function useViewerShortcuts(handlers: ViewerShortcutHandlers) {
         break
       case 'Space':
         // Space still activates whatever the user has tabbed to: taking it
-        // from a focused button would make the rail unusable from the keyboard.
+        // from a focused button would make a toolbar unusable from the
+        // keyboard.
         if (isActivatable(event.target)) return
         handlers.togglePlay()
         break
@@ -155,7 +199,7 @@ export function useViewerShortcuts(handlers: ViewerShortcutHandlers) {
         handlers.resetViewport()
         break
       default: {
-        const tool = TOOLS.find(entry => codeForLetter(entry.shortcut) === event.code)
+        const tool = tools.find(entry => codeForLetter(entry.shortcut) === event.code)
         if (!tool) return
         handlers.setTool(tool.className)
       }
@@ -166,4 +210,28 @@ export function useViewerShortcuts(handlers: ViewerShortcutHandlers) {
 
   onMounted(() => window.addEventListener('keydown', onKeydown))
   onUnmounted(() => window.removeEventListener('keydown', onKeydown))
+}
+
+/**
+ * Drop focus from a button that was clicked with a pointer.
+ *
+ * A clicked button keeps focus afterwards, and a focused button owns the
+ * spacebar — the browser activates it rather than letting the key through. So
+ * picking a tool from a toolbar with the mouse and then pressing Space appears
+ * to do nothing at all: the key is quietly re-pressing the tool button that is
+ * still focused, and never reaches the viewer's play/pause binding.
+ *
+ * `event.detail` is the click count, and it is `0` for a click the browser
+ * synthesised from Enter or Space on a focused control. Blurring only when it
+ * is non-zero therefore drops focus for mouse and touch, where nobody is
+ * following it, and leaves it exactly where it was for anyone driving the page
+ * from the keyboard — who needs it to tab onwards from.
+ *
+ * Attach it once to a toolbar's root and let the clicks bubble to it.
+ */
+export function releaseFocus(event: MouseEvent) {
+  if (event.detail === 0) return
+  const target = event.target
+  if (!(target instanceof HTMLElement)) return
+  target.closest('button')?.blur()
 }

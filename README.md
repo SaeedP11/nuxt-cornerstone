@@ -429,6 +429,102 @@ returns, plus `report`: `{ boxes, format, findings, filtered, malformed, seriesI
 files served over HTTP, call `indexUrls()` before drawing — `toImageId()` builds an imageId without
 reading the file, so nothing would know its SOPInstanceUID.
 
+## Building a viewer
+
+The composables above are the primitives. Assembling them into something a
+radiologist can use — open a study, switch series, scrub, play, report what
+went wrong — is the same work in every application, so it is here too, in a
+second tier of composables that produce **state and translated captions but no
+markup**. You bring the buttons.
+
+```vue
+<script setup lang="ts">
+import type { Types as CoreTypes } from '@cornerstonejs/core'
+
+const study = useDicomStudy()
+const viewport = shallowRef<CoreTypes.IStackViewport | null>(null)
+const cine = useStackCine(study.imageIds, study.imageIndex)
+const report = useAnnotationReport(viewport)
+const tools = useCornerstoneTools()
+
+useViewerShortcuts({
+  isEnabled: () => study.imageIds.value.length > 0,
+  step: study.step,
+  first: () => (study.imageIndex.value = 0),
+  last: () => (study.imageIndex.value = study.maxIndex.value),
+  stepSeries: study.stepSeries,
+  setTool: tools.setActive,
+  resetViewport: () => viewport.value?.resetCamera(),
+  togglePlay: cine.toggle,
+  toggleHelp: () => {},
+})
+</script>
+
+<template>
+  <input type="file" multiple @change="study.openAny(Array.from($event.target.files ?? []))">
+  <p v-if="study.problemText.value">{{ study.problemText }}</p>
+
+  <div style="height: 600px">
+    <CornerstoneViewport
+      :image-ids="study.imageIds.value"
+      :image-index="study.imageIndex.value"
+      @ready="viewport = $event"
+      @image-index-change="study.imageIndex.value = $event"
+    />
+  </div>
+
+  <button :disabled="cine.buffering.value" @click="cine.toggle">Play</button>
+  <small>{{ study.sourceLabel }} · {{ cine.statusText }}</small>
+</template>
+```
+
+**`useDicomStudy()`** → `{ ready, imageIds, imageIndex, maxIndex, series, activeSeriesUid, source,
+sourceLabel, busy, progress, progressLabel, progressValue, problemText, rejectedText, openAny,
+openFiles, openZip, openUrls, selectSeries, step, stepSeries, clear, setProblem }`.
+
+Everything about the stack on screen. `openAny(files)` is the one way in for a picked or dropped
+selection: an archive is unpacked and anything else is vetted file by file, on content rather than
+on the name, so a PNG renamed `.dcm` is turned away here with its name attached instead of failing
+later at render with an error that points at the viewport. `openUrls(urls)` is the path for a study
+served by your own backend; it reads each file's headers afterwards so an annotation report can find
+the slices. The `*Label` and `*Text` members are computed, already translated, and re-render on a
+locale switch — they hold data rather than a finished string for exactly that reason.
+
+**`useStackCine(imageIds, imageIndex)`** → `{ playing, canPlay, frameRate, loop, preparing,
+prepared, buffering, percent, statusText, play, pause, toggle, prepare }`.
+
+[`useCinePlayer()`](#cine-playback) and `useImagePrefetch()` wired together, which is what a
+transport actually needs: a stack viewport loads each slice as it shows it, so playing a stack
+nobody has prepared runs at the speed of the decoder rather than at the frame rate that was asked
+for. A stack prepares itself as soon as it loads, and `buffering` holds play until
+`PLAY_READY_RATIO` — half — of it is decoded. Half is a comfortable head start, because the film and
+the prefetch both run from the first image.
+
+**`useAnnotationReport(viewport)`** → `{ open, toggle, reset, busy, loaded, visible, summaryText,
+failure, drawn, pending }`.
+
+[`useDicomAnnotations()`](#imported-annotations) as a user action: which file is open, whether its
+boxes are showing, and what to say afterwards. The case worth having a sentence for is a file that
+parsed perfectly and placed nothing, which almost always means the report belongs to another series.
+Call `reset()` when the stack changes — boxes are keyed to the imageIds that were loaded when they
+were drawn.
+
+**`useViewerShortcuts(handlers, { tools })`** and **`releaseFocus(event)`**.
+
+The [OHIF](https://ohif.org) keymap: arrows and Home/End through the stack, PageUp/PageDown through
+the series, `W`/`P`/`Z` and friends for tools, `R` to reset, Space or `C` for cine, `?` for help.
+Bindings match `event.code`, the physical key, not `event.key`: on a Persian layout the W key
+reports `'ش'` and on a Russian one `'ц'`, so a `key`-based binding silently stops working for
+anyone not on QWERTY. Pass `tools` so your toolbar and the keymap read from one table and the key a
+button advertises is the key that works; the default is `DEFAULT_TOOL_SHORTCUTS`. Widgets that read
+the keyboard themselves — anything with a text, combobox, listbox or menu role, and anything inside
+an open dialog — are left alone. `releaseFocus` goes on a toolbar's root: a button clicked with the
+mouse keeps focus and then swallows the spacebar, so picking a tool and pressing play appears to do
+nothing.
+
+**`guardDicomFiles(files)`** → `{ accepted, rejected }`. The content check `openFiles()` runs, on
+its own, for an application that sorts its own selection.
+
 ## Options
 
 ```ts
@@ -569,10 +665,14 @@ Two things worth knowing:
 
 ### What gets translated
 
-Everything the module produces itself: the errors it throws, and the series labels
-`useDicomFiles()` builds — `Series 3 (CT, 12 images)` becomes `سری ۳ (CT، ۱۲ تصویر)`. Identifiers
-stay in English inside every translation, because `cornerstone.autoInit` and `ensureCornerstone()`
-are things you have to type or search for.
+Everything the module produces itself: the errors it throws, the series labels
+`useDicomFiles()` builds — `Series 3 (CT, 12 images)` becomes `سری ۳ (CT، ۱۲ تصویر)` — and every
+caption the [viewer composables](#building-a-viewer) return, under the `study.*`, `cine.*` and
+`report.*` keys. Identifiers stay in English inside every translation, because
+`cornerstone.autoInit` and `ensureCornerstone()` are things you have to type or search for.
+
+Those captions are computed from state rather than stored once, so they are rewritten on a locale
+switch. That is the one place the rule below does not apply.
 
 An error is translated when it is **thrown**, not when it is displayed. Switching locale does not
 rewrite an error already sitting in a `ref`.
@@ -697,12 +797,19 @@ register tools by their `toolName` string.
 
 ## Scope
 
-This release covers 2D stack viewing: initialisation, `<CornerstoneViewport>`, tool groups,
+This release covers 2D stack viewing: initialisation, `<CornerstoneViewport>`, tool groups, the
+[viewer composables](#building-a-viewer) that assemble them into a working viewer,
 annotations — drawn by the user, or imported as read-only boxes — and the `wadouri:` /
 `dicomfile:` loading paths. Imported annotations are boxes only, and are read-only: nothing writes
 measurements back out, and DICOM SR and Presentation State are not read. Volume and MPR viewports, segmentation,
 `@cornerstonejs/polymorphic-segmentation` and `@cornerstonejs/labelmap-interpolation` are not wired
 up yet — the last two each need their own `optimizeDeps.exclude` entry and a `peerImport` callback.
+
+No chrome ships either, and that is deliberate: a header, a series list and a transport are a
+handful of buttons over the composables above, and every application wants them to look like itself.
+Making a component library a peer dependency of a DICOM viewport would be a large tax on anyone who
+only wants the viewport. The [playground](#playground) is the reference implementation, written to
+be read and copied.
 
 ## Playground
 
@@ -716,6 +823,14 @@ pnpm dev          # http://localhost:3000 — or /?samples to load the stack imm
 The playground UI is built from PrimeVue components with Tailwind for layout. The module itself
 ships no UI dependency — `<CornerstoneViewport>` is an unstyled element with a default slot, so the
 consuming application supplies its own styling.
+
+What is left in `playground/app/` is therefore chrome and nothing else: the header, the series
+list, the tool rail, the scrubber and the shortcuts dialog, plus the table of tools that the rail
+and the keymap share. Everything underneath them — opening a study, switching series, playback,
+prefetch, the annotation report, the keyboard — is [`useDicomStudy()` and its
+neighbours](#building-a-viewer), and is imported from the module exactly as it would be in your own
+application. Copying a component out of `playground/app/components/` into your project is meant to
+work: it is ordinary PrimeVue markup over composables you already have.
 
 The header carries an **English / فارسی** switch. It flips `<html lang dir>`, loads a Persian face,
 and renders counts in Persian-Indic digits, while the viewport stays left-to-right. The demo's own

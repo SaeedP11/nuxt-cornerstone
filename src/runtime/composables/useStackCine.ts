@@ -1,7 +1,11 @@
+import { computed, watch } from 'vue'
+import { t } from '../i18n'
+import { useCinePlayer } from './useCinePlayer'
+import { useImagePrefetch } from './useImagePrefetch'
 import type { Ref } from 'vue'
 
 /**
- * The frame rates the footer offers.
+ * A reasonable set of frame rates for a transport to offer.
  *
  * 15 is the default because it is fast enough to read as motion and slow
  * enough that a stack coming off the network can nearly keep up; the ones
@@ -20,20 +24,32 @@ export const FRAME_RATES = [5, 10, 15, 24, 30] as const
  */
 export const PLAY_READY_RATIO = 0.5
 
+export interface StackCineOptions {
+  /** Frames per second to start at. Default: `15`. */
+  frameRate?: number
+}
+
 /**
- * Cine playback for the stack on screen, and the prefetch that makes it watchable.
+ * Cine playback for the stack on screen, and the prefetch that makes it
+ * watchable.
  *
- * The two belong together in the demo even though the module keeps them apart:
- * a stack viewport loads each slice as it is shown, so playing a stack nobody
- * has prepared runs at the speed of the decoder rather than at the frame rate
- * that was asked for. So preparing is not something the user has to think of
+ * {@link useCinePlayer} and {@link useImagePrefetch} are deliberately separate
+ * primitives, but an application almost always wants them together: a stack
+ * viewport loads each slice as it is shown, so playing a stack nobody has
+ * prepared runs at the speed of the decoder rather than at the frame rate that
+ * was asked for. Here preparing is not something the user has to think of
  * first — a stack starts preparing as soon as it is loaded, and pressing play
  * starts it too if for any reason it is not already done.
  */
-export function useViewerCine(imageIds: Ref<string[]>, imageIndex: Ref<number>) {
-  const { t } = useCornerstoneI18n()
+export function useStackCine(
+  imageIds: Ref<string[]>,
+  imageIndex: Ref<number>,
+  options: StackCineOptions = {},
+) {
   const prefetch = useImagePrefetch()
-  const cine = useCinePlayer(imageIndex, () => imageIds.value.length, { frameRate: 15 })
+  const cine = useCinePlayer(imageIndex, () => imageIds.value.length, {
+    frameRate: options.frameRate ?? 15,
+  })
 
   const percent = computed(() => Math.round(prefetch.progress.value * 100))
 
@@ -63,23 +79,23 @@ export function useViewerCine(imageIds: Ref<string[]>, imageIndex: Ref<number>) 
    * re-renders in the new language when the locale changes.
    */
   const statusText = computed(() => {
-    if (prefetch.pending.value) return t('app.cine.preparing', { percent: percent.value })
+    if (prefetch.pending.value) return t('cine.preparing', { percent: percent.value })
     if (prefetch.total.value === 0) return null
-    if (prefetch.cacheFull.value) return t('app.cine.cacheFull', { count: prefetch.loaded.value })
+    if (prefetch.cacheFull.value) return t('cine.cacheFull', { count: prefetch.loaded.value })
     if (prefetch.failed.value > 0) {
-      return t('app.cine.preparedWithFailures', {
+      return t('cine.preparedWithFailures', {
         count: prefetch.loaded.value,
         failed: prefetch.failed.value,
       })
     }
-    if (prepared.value) return t('app.cine.prepared', { count: prefetch.loaded.value })
+    if (prepared.value) return t('cine.prepared', { count: prefetch.loaded.value })
     return null
   })
 
   /**
    * Decode the whole stack, fanning out from the slice on screen.
    *
-   * `'outward'` is the order for the button: someone who prepares by hand is
+   * `'outward'` is the order for a button: someone who prepares by hand is
    * about to scroll, and scrolling goes both ways.
    */
   function prepare() {
@@ -88,15 +104,15 @@ export function useViewerCine(imageIds: Ref<string[]>, imageIndex: Ref<number>) 
 
   function toggle() {
     // Pausing is always allowed; starting is not, until there is enough of the
-    // stack to play. The button is in its loading state here, so this guard is
-    // really for the `C` shortcut, which does not go through the button.
+    // stack to play. A play button is in its loading state here, so this guard
+    // is really for a keyboard shortcut, which does not go through the button.
     if (!cine.playing.value && buffering.value) return
 
     // Normally the stack prepared itself when it loaded and there is nothing
     // to do here. This catches the cases where it did not finish — a run the
-    // user interrupted by scrubbing to another series and back, or one the
-    // image cache cut short. Already-cached slices are counted and skipped,
-    // so the repeat costs nothing when it is not needed.
+    // user interrupted by moving to another series and back, or one the image
+    // cache cut short. Already-cached slices are counted and skipped, so the
+    // repeat costs nothing when it is not needed.
     if (!cine.playing.value && !prepared.value && !prefetch.pending.value) {
       prefetch.prepare(imageIds.value, { from: imageIndex.value, order: 'forward' })
     }
@@ -106,14 +122,14 @@ export function useViewerCine(imageIds: Ref<string[]>, imageIndex: Ref<number>) 
   /**
    * A stack that has just finished loading prepares itself.
    *
-   * This watcher fires once the source — bundled samples, picked files, or a
-   * series out of an archive — has produced its imageIds, which is after the
-   * unpacking and header reading are done and therefore the first moment
-   * there is anything to decode. By the time the user reaches for play, the
-   * film is usually already in the cache.
+   * This watcher fires once the source — picked files, a series out of an
+   * archive, or a list of URLs — has produced its imageIds, which is after the
+   * unpacking and header reading are done and therefore the first moment there
+   * is anything to decode. By the time the user reaches for play, the film is
+   * usually already in the cache.
    *
-   * Playback order rather than outward, because that is what this is for. On
-   * a freshly opened stack the two agree anyway: the index is back at 0, and
+   * Playback order rather than outward, because that is what this is for. On a
+   * freshly opened stack the two agree anyway: the index is back at 0, and
    * fanning out from the first image only has one direction to go.
    *
    * The other half of the job is the old stack's: a different stack is a
