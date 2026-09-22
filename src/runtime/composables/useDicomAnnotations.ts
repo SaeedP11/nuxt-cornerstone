@@ -83,7 +83,7 @@ interface PreparedBox {
  * `getTextLines`, so an imported box shows the label it arrived with instead of
  * the area and mean a measurement would show.
  */
-const OVERLAY_TOOL_NAME = 'DicomBoxOverlay'
+export const OVERLAY_TOOL_NAME = 'DicomBoxOverlay'
 
 const PARENT_TOOL_CLASS = 'RectangleROITool'
 

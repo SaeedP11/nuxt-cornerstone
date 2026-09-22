@@ -26,6 +26,7 @@ const viewport = shallowRef<CoreTypes.IStackViewport | null>(null)
 const helpVisible = ref(false)
 
 const annotations = useAnnotationReport(viewport)
+const measurements = useMeasurements(viewport)
 const cine = useStackCine(imageIds, imageIndex)
 
 interface SampleEntry {
@@ -119,7 +120,14 @@ function settled(flag: Ref<boolean>): Promise<void> {
  * soon as the study finishes loading, and a watcher that ran on the next tick
  * would run after that and erase the boxes it was meant to precede.
  */
-watch(imageIds, () => annotations.reset(), { flush: 'sync' })
+watch(imageIds, (next) => {
+  annotations.reset()
+  // The stage unmounts the viewport when the last image goes, and the viewport
+  // it emitted is disabled from that point on. Dropping the reference keeps
+  // everything that reads it — the measurement counts among them — from
+  // questioning an object Cornerstone has already taken apart.
+  if (!next.length) viewport.value = null
+}, { flush: 'sync' })
 
 async function selectTool(className: string) {
   activeTool.value = className
@@ -156,6 +164,9 @@ useViewerShortcuts({
   setTool: selectTool,
   resetViewport: resetCamera,
   togglePlay: cine.toggle,
+  // Only what is selected. Deleting whatever happened to be on the slice would
+  // make a stray Delete keypress destroy work the reader never pointed at.
+  deleteMeasurement: () => measurements.deleteSelected(),
   toggleHelp: () => (helpVisible.value = !helpVisible.value),
 }, { tools: TOOLS })
 
@@ -233,8 +244,14 @@ onMounted(() => {
       <ViewerToolRail
         v-if="imageIds.length"
         :active-tool="activeTool"
+        :selected-measurements="measurements.selected.value"
+        :slice-measurements="measurements.onSlice.value"
+        :total-measurements="measurements.total.value"
         @update:active-tool="selectTool"
         @reset-camera="resetCamera"
+        @delete-selected="measurements.deleteSelected"
+        @delete-slice="measurements.deleteOnSlice"
+        @delete-all="measurements.deleteAll"
       />
 
       <ViewerSidebar

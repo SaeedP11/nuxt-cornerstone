@@ -91,6 +91,11 @@ export type {
 } from './runtime/composables/useDicomAnnotations'
 
 export type {
+  Measurement,
+  MeasurementsOptions,
+} from './runtime/composables/useMeasurements'
+
+export type {
   AnnotationFormat,
   FindingLabelInfo,
   ReadAnnotationsOptions,

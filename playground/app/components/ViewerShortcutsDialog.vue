@@ -17,6 +17,7 @@ const BINDINGS = [
   { keys: ['Space', 'C'], key: 'app.shortcuts.cine' },
   { keys: ['R'], key: 'app.shortcuts.reset' },
   { keys: TOOLS.map(tool => tool.shortcut.toUpperCase()), key: 'app.shortcuts.tools' },
+  { keys: ['Delete', '⌫'], key: 'app.shortcuts.delete' },
   { keys: ['?'], key: 'app.shortcuts.help' },
 ]
 </script>

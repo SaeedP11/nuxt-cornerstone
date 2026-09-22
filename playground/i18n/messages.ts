@@ -52,6 +52,30 @@ export const en: MessageCatalog = {
   'app.tool.ellipse': 'Ellipse',
   'app.tool.probe': 'Probe',
 
+  // Deleting the measurements the reader drew. Counts ride in the labels
+  // because the buttons are only shown when there is something to delete, so
+  // the number is the useful part of the sentence.
+  'app.measurements.deleteSelected': {
+    one: 'Delete the selected measurement',
+    other: 'Delete {count} selected measurements',
+  },
+  'app.measurements.selectHint': 'Click a measurement to select it, then delete it.',
+  'app.measurements.clearSlice': {
+    one: 'Delete {count} measurement on this image',
+    other: 'Delete {count} measurements on this image',
+  },
+  'app.measurements.clearAll': {
+    one: 'Delete {count} measurement in this series',
+    other: 'Delete {count} measurements in this series',
+  },
+  'app.measurements.confirmTitle': 'Delete all measurements?',
+  'app.measurements.confirmBody': {
+    one: 'The measurement drawn on this series will be removed. This cannot be undone.',
+    other: 'All {count} measurements drawn on this series will be removed. This cannot be undone.',
+  },
+  'app.measurements.confirmDelete': 'Delete',
+  'app.measurements.cancel': 'Cancel',
+
   'app.shortcuts.title': 'Keyboard shortcuts',
   'app.shortcuts.slice': 'Previous / next image',
   'app.shortcuts.series': 'Previous / next series',
@@ -59,6 +83,7 @@ export const en: MessageCatalog = {
   'app.shortcuts.tools': 'Pick a tool — each button on the rail shows its key',
   'app.shortcuts.reset': 'Reset the viewport',
   'app.shortcuts.cine': 'Play / pause the series',
+  'app.shortcuts.delete': 'Delete the selected measurement — click one to select it',
   'app.shortcuts.help': 'Open this list',
 
   'app.error.noSamples':
@@ -110,6 +135,17 @@ export const fa: MessageCatalog = {
   'app.tool.ellipse': 'بیضی',
   'app.tool.probe': 'کاوشگر',
 
+  'app.measurements.deleteSelected': { other: 'حذف {count} اندازه‌گیری انتخاب‌شده' },
+  'app.measurements.selectHint': 'روی یک اندازه‌گیری کلیک کنید تا انتخاب شود، سپس آن را حذف کنید.',
+  'app.measurements.clearSlice': { other: 'حذف {count} اندازه‌گیری روی این تصویر' },
+  'app.measurements.clearAll': { other: 'حذف {count} اندازه‌گیری در این سری' },
+  'app.measurements.confirmTitle': 'همهٔ اندازه‌گیری‌ها حذف شوند؟',
+  'app.measurements.confirmBody': {
+    other: 'همهٔ {count} اندازه‌گیری ترسیم‌شده روی این سری حذف می‌شوند. این کار برگشت‌پذیر نیست.',
+  },
+  'app.measurements.confirmDelete': 'حذف',
+  'app.measurements.cancel': 'انصراف',
+
   'app.shortcuts.title': 'میان‌برهای صفحه‌کلید',
   'app.shortcuts.slice': 'تصویر قبلی / بعدی',
   'app.shortcuts.series': 'سری قبلی / بعدی',
@@ -117,6 +153,7 @@ export const fa: MessageCatalog = {
   'app.shortcuts.tools': 'انتخاب ابزار — کلید هر ابزار روی دکمهٔ آن در نوار نوشته شده است',
   'app.shortcuts.reset': 'بازنشانی نمای تصویر',
   'app.shortcuts.cine': 'پخش / توقف سری',
+  'app.shortcuts.delete': 'حذف اندازه‌گیری انتخاب‌شده — برای انتخاب روی آن کلیک کنید',
   'app.shortcuts.help': 'باز کردن همین فهرست',
 
   'app.error.noSamples':

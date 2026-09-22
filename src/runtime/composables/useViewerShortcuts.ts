@@ -43,6 +43,12 @@ export interface ViewerShortcutHandlers {
   togglePlay: () => void
   /** Show the application's own list of these bindings. */
   toggleHelp: () => void
+  /**
+   * Delete the measurements the user has selected. Optional: a viewer with no
+   * annotation tools has nothing to delete, and leaving it out keeps Delete
+   * and Backspace with the browser.
+   */
+  deleteMeasurement?: () => void
 }
 
 export interface ViewerShortcutOptions {
@@ -132,6 +138,10 @@ function codeForLetter(letter: string): string {
  * a media player, and a stack has a film to play, so it goes to cine and the
  * reset moves to `R`. `R` is free here — it is rotate-right in OHIF, and there
  * is no rotate tool in this module's default set.
+ *
+ * Delete and Backspace remove the selected measurements, when the caller
+ * supplies `deleteMeasurement`. Both, because the key a reader reaches for is
+ * whichever one their keyboard has.
  */
 export function useViewerShortcuts(
   handlers: ViewerShortcutHandlers,
@@ -197,6 +207,16 @@ export function useViewerShortcuts(
         break
       case 'KeyR':
         handlers.resetViewport()
+        break
+      // Delete is the key for this everywhere, and Backspace is the one a Mac
+      // keyboard without a Delete key actually has. Backspace is only "go
+      // back" outside a text field in old browsers, and nothing here runs
+      // inside one — the widgets that own the keyboard have already been let
+      // through above — so taking it and marking it handled is safe.
+      case 'Delete':
+      case 'Backspace':
+        if (!handlers.deleteMeasurement) return
+        handlers.deleteMeasurement()
         break
       default: {
         const tool = tools.find(entry => codeForLetter(entry.shortcut) === event.code)

@@ -511,10 +511,50 @@ parsed perfectly and placed nothing, which almost always means the report belong
 Call `reset()` when the stack changes — boxes are keyed to the imageIds that were loaded when they
 were drawn.
 
+**`useMeasurements(viewport)`** → `{ list, refresh, remove, deleteSelected, deleteOnSlice,
+deleteAll, total, onSlice, selected }`.
+
+Deleting the measurements the reader drew. Cornerstone gives every annotation tool a way to draw and
+no way to un-draw, so a stray Length or a mis-clicked Probe stays on the slice for as long as the
+study is open. This is the other half: the counts a toolbar needs to decide what to offer, and the
+three removals worth offering.
+
+```vue
+<script setup lang="ts">
+const viewport = shallowRef<CoreTypes.IStackViewport | null>(null)
+const measurements = useMeasurements(viewport)
+</script>
+
+<template>
+  <!-- Nothing drawn yet, nothing to offer. -->
+  <template v-if="measurements.total.value">
+    <button @click="measurements.deleteOnSlice()">
+      Clear this image ({{ measurements.onSlice.value }})
+    </button>
+    <button @click="measurements.deleteAll()">
+      Clear all ({{ measurements.total.value }})
+    </button>
+  </template>
+</template>
+```
+
+Only the reader's own work is in scope. Boxes drawn by [`useDicomAnnotations()`](#imported-annotations)
+are excluded by tool name and anything locked is excluded outright, so a delete button cannot erase
+an imported report — `useAnnotationReport().reset()` is what takes those away. Pass `{ keep: [...] }`
+to exclude tools of your own as well.
+
+Scope is the stack on screen, not the annotation state manager, which outlives a study: a
+measurement drawn on a series that has since been closed is neither counted nor deleted. The counts
+follow the annotation state — they move when the user draws, deletes, selects or scrolls — so a
+toolbar can read them directly rather than recomputing them.
+
 **`useViewerShortcuts(handlers, { tools })`** and **`releaseFocus(event)`**.
 
 The [OHIF](https://ohif.org) keymap: arrows and Home/End through the stack, PageUp/PageDown through
 the series, `W`/`P`/`Z` and friends for tools, `R` to reset, Space or `C` for cine, `?` for help.
+Delete and Backspace remove the selected measurements when you supply `deleteMeasurement` — both
+keys, because the one a reader reaches for is whichever their keyboard has; leave the handler out
+and the keys stay with the browser.
 Bindings match `event.code`, the physical key, not `event.key`: on a Persian layout the W key
 reports `'ش'` and on a Russian one `'ц'`, so a `key`-based binding silently stops working for
 anyone not on QWERTY. Pass `tools` so your toolbar and the keymap read from one table and the key a
@@ -847,6 +887,17 @@ over the stack, and the button beside it then shows and hides what it drew. A re
 dropped on the stage, on its own or alongside the study it belongs to, in which case it is drawn as
 soon as the images finish loading. Boxes are discarded whenever the stack changes, since they are
 keyed to the imageIds that were loaded when they were drawn.
+
+The rail grows a **delete** section as soon as the reader has drawn something. **Click a
+measurement to select it** — any tool selects, so this works without leaving window/level, and
+shift-click adds to the selection — and the first button deletes what is selected, as Delete and
+Backspace also do. Below it, an eraser clears the measurements on the image on screen and a trash
+button clears the series, the latter asking first because it can take away work that is not in view.
+Each button appears only when it has something to do: the eraser stays away while every measurement
+is on the slice anyway, since it would then be the trash button under another icon, and while
+nothing is selected the first slot holds the hint that says a measurement can be clicked at all.
+Imported boxes are not measurements: none of this touches a report, which is shown and hidden from
+the header and discarded with the stack.
 
 The footer is the transport. **Play** — or the spacebar, or `C` — runs the stack as a film at the
 rate chosen beside it, looping unless the loop button is turned off, and moving the scrubber or the
