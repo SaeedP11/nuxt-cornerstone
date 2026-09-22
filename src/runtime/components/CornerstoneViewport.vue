@@ -286,14 +286,8 @@ defineExpose({
 
 <template>
   <!--
-    Cornerstone appends its own canvas to this element and reads the element’s
-    box for sizing, so the element must carry a size of its own and must not let
-    the canvas change it. `touch-none` keeps touch panning from stealing drags
-    from the tools, and the canvas is reached with an arbitrary variant because
-    Cornerstone creates it at runtime, out of reach of a class binding.
-
-    These are Tailwind utilities: a consuming app needs Tailwind and has to scan
-    this package — see “Tailwind” in the README.
+    The layout this element needs to work at all is in the `<style>` block
+    below rather than in utility classes here — see the note there.
 
     `dir="ltr"` is deliberate and should stay. In an RTL app the surrounding
     chrome flips, but a DICOM image must not: left and right are facts about the
@@ -304,7 +298,7 @@ defineExpose({
   <div
     ref="element"
     dir="ltr"
-    class="nuxt-cornerstone-viewport relative h-full w-full touch-none overflow-hidden [&>canvas]:block"
+    class="nuxt-cornerstone-viewport"
     :data-status="status"
     @contextmenu.prevent
   >
@@ -315,3 +309,40 @@ defineExpose({
     />
   </div>
 </template>
+
+<style>
+/*
+ * Plain CSS, and not scoped.
+ *
+ * These rules are not decoration: Cornerstone appends its own canvas to this
+ * element and reads the element's box for sizing, so an element without a size
+ * of its own yields a viewport with a degenerate camera and nothing on screen.
+ * Shipping them as Tailwind utilities made that failure the default for anyone
+ * who had not added an `@source` line pointing into this package — the
+ * component rendered, reported no error, and drew nothing. A style block is
+ * compiled by the consuming application's own build, so it needs no
+ * configuration and no Tailwind.
+ *
+ * Not scoped, because Cornerstone creates the canvas at runtime: it never
+ * carries the `data-v-` attribute a scoped selector would look for.
+ *
+ * Wrapped in `:where()`, which contributes no specificity at all, so anything
+ * an application writes — a utility class passed to the component, a rule of
+ * its own — wins without needing `!important` or a longer selector. Giving the
+ * element a height is the usual reason to reach for that.
+ */
+:where(.nuxt-cornerstone-viewport) {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  /* Stop touch panning the page from stealing drags from the tools. */
+  touch-action: none;
+}
+
+/* Inline is the default, and it leaves a few pixels of line box under the
+   canvas — enough for the resize observer to chase its own tail. */
+:where(.nuxt-cornerstone-viewport) > canvas {
+  display: block;
+}
+</style>

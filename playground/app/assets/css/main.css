@@ -17,14 +17,6 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * The viewport component styles itself with Tailwind utilities, and it lives
- * outside the source tree anchored above, so name it explicitly. A consuming
- * app does the same against the published package — see "Tailwind" in the
- * README.
- */
-@source "../../../../src/runtime";
-
-/*
  * Persian typography for RTL locales.
  *
  * Vazirmatn is loaded from Google Fonts by app.vue, and only when the locale is

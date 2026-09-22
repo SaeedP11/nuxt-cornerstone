@@ -28,21 +28,23 @@ without them. All `@cornerstonejs` packages must be on the same version.
 
 The module checks for all six at startup and fails with the install command if any is missing.
 
-### Tailwind
+### Styling
 
-`<CornerstoneViewport>` styles itself with Tailwind utilities, so your app needs Tailwind v4 and
-has to scan this package — Tailwind skips `node_modules` unless a source is named explicitly:
+Nothing to configure. `<CornerstoneViewport>` brings the handful of rules it needs to function —
+a size of its own, `overflow: hidden`, `touch-action: none`, and `display: block` on the canvas
+Cornerstone appends to it — in its own `<style>` block, which your build compiles like any other
+component's. There is no Tailwind requirement and no source-scanning line to add.
 
-```css
-/* assets/css/main.css */
-@import "tailwindcss";
-@source "../../node_modules/nuxt-cornerstone/dist";
+Those rules are written as `:where(.nuxt-cornerstone-viewport)`, which contributes no specificity,
+so anything you write beats them without `!important`:
+
+```vue
+<CornerstoneViewport :image-ids="imageIds" class="h-[600px] rounded-lg" />
 ```
 
-Without that line the viewport element is laid out at its intrinsic size, which is zero height, and
-nothing renders. If you would rather not add Tailwind, give `.nuxt-cornerstone-viewport` the
-equivalent rules yourself: `position: relative`, `width: 100%`, `height: 100%`,
-`overflow: hidden`, `touch-action: none`, and `display: block` on its child `canvas`.
+The element must end up with a height from somewhere. It defaults to `100%`, which means a parent
+with a height of its own; a viewport that reports no error and draws nothing is almost always an
+ancestor that collapsed to zero.
 
 ```ts
 // nuxt.config.ts
@@ -821,8 +823,10 @@ pnpm dev          # http://localhost:3000 — or /?samples to load the stack imm
 ```
 
 The playground UI is built from PrimeVue components with Tailwind for layout. The module itself
-ships no UI dependency — `<CornerstoneViewport>` is an unstyled element with a default slot, so the
-consuming application supplies its own styling.
+ships no UI dependency and no framework requirement — `<CornerstoneViewport>` carries only the
+rules it needs to function, and has a default slot for everything else, so the consuming
+application supplies the look. The playground's own stylesheet names no source inside the package,
+which is the point: what works here works in an app that has never heard of Tailwind.
 
 What is left in `playground/app/` is therefore chrome and nothing else: the header, the series
 list, the tool rail, the scrubber and the shortcuts dialog, plus the table of tools that the rail
