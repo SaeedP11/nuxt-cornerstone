@@ -56,7 +56,7 @@ interface I18nState {
 // Parked on `import.meta.hot.data` for the same reason the Cornerstone state is:
 // replacing this module in dev must not reset the locale under a mounted tree.
 const hot = import.meta.hot
-const state: I18nState = hot ? ((hot.data.cornerstoneI18n ??= {}) as I18nState) : {}
+const state: I18nState = hot?.data ? ((hot.data.cornerstoneI18n ??= {}) as I18nState) : {}
 
 state.locale ??= ref<string>(DEFAULT_LOCALE)
 state.fallbackLocale ??= DEFAULT_LOCALE

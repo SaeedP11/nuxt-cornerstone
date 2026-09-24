@@ -27,7 +27,7 @@ interface InstanceIndexState {
 // is: replacing this module in dev must not lose the index under a viewport
 // that is already showing annotations placed from it.
 const hot = import.meta.hot
-const state: InstanceIndexState = hot
+const state: InstanceIndexState = hot?.data
   ? ((hot.data.cornerstoneInstances ??= {}) as InstanceIndexState)
   : {}
 state.imageIds ??= new Map<string, string>()

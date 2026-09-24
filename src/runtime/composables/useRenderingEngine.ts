@@ -21,7 +21,7 @@ interface EngineState {
 }
 
 const hot = import.meta.hot
-const state: EngineState = hot ? ((hot.data.cornerstoneEngines ??= {}) as EngineState) : {}
+const state: EngineState = hot?.data ? ((hot.data.cornerstoneEngines ??= {}) as EngineState) : {}
 state.engines ??= new Map<string, EngineEntry>()
 
 export function useRenderingEngine() {

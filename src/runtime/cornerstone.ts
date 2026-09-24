@@ -19,6 +19,9 @@ import type {
  * So init is single-flight, and the flight is parked on `import.meta.hot.data`
  * so that a dev-server module replacement of *this* file cannot start a second
  * one underneath a viewport that is already rendering.
+ *
+ * `hot` without `hot.data` is not the Vite dev server: vitest/vite-node expose
+ * an `import.meta.hot` with no data store. Plain module state is right there.
  */
 interface CornerstoneState {
   libsPromise?: Promise<CornerstoneLibs> | null
@@ -28,7 +31,7 @@ interface CornerstoneState {
 }
 
 const hot = import.meta.hot
-const state: CornerstoneState = hot ? ((hot.data.cornerstone ??= {}) as CornerstoneState) : {}
+const state: CornerstoneState = hot?.data ? ((hot.data.cornerstone ??= {}) as CornerstoneState) : {}
 state.registeredTools ??= new Set<string>()
 
 const DEFAULT_OPTIONS: ResolvedCornerstoneOptions = {
