@@ -236,6 +236,24 @@ export default defineNuxtModule<ModuleOptions>({
       // The decode worker is spawned as `new Worker(url, { type: 'module' })`.
       config.worker = { ...config.worker, format: 'es' }
 
+      // The worker is its own Rollup build, and names its assets Vite's way
+      // (`[name]-[hash]`) where the app's build names them its own (Nuxt:
+      // `[name].[hash]`). Every codec binary that both the main thread and the
+      // decode worker reference was emitted twice under two names, so a session
+      // could download the same WASM (up to 2.2 MB) twice. Naming the worker's
+      // assets the app's way makes them one file.
+      const appOutput = (viteConfig as { build?: { rollupOptions?: { output?: unknown } } }).build?.rollupOptions?.output
+      const assetFileNames = appOutput && !Array.isArray(appOutput)
+        ? (appOutput as { assetFileNames?: unknown }).assetFileNames
+        : undefined
+      if (assetFileNames) {
+        const workerRollup = (config.worker.rollupOptions ?? {}) as { output?: Record<string, unknown> }
+        config.worker.rollupOptions = {
+          ...workerRollup,
+          output: { ...workerRollup.output, assetFileNames },
+        }
+      }
+
       config.assetsInclude = unique([...toArray(config.assetsInclude), '**/*.wasm'])
 
       // Dev only: the decoders are served raw, and some of them point at source
